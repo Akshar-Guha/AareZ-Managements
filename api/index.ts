@@ -4,16 +4,37 @@ import { Request, Response } from 'express'; // Import Request and Response type
 
 let serverlessHandler;
 
+console.log('Starting serverless function initialization');
+
 try {
+  console.log('Attempting to create Express app');
   const app = createApp();
-  serverlessHandler = serverless(app);
-} catch (error: unknown) { // Explicitly type error as unknown
-  serverlessHandler = (req: Request, res: Response) => { // Explicitly type req and res
+  
+  console.log('Wrapping app with serverless');
+  serverlessHandler = serverless(app, {
+    binary: ['*/*'], // Support binary responses
+    // Add more configuration if needed
+  });
+  
+  console.log('Serverless handler created successfully');
+} catch (error: unknown) {
+  console.error('CRITICAL: Serverless function initialization failed', error);
+  
+  serverlessHandler = (req: Request, res: Response) => {
+    console.error('Fallback error handler called');
     res.status(500).json({ 
       error: 'Server initialization failed', 
-      details: (error as Error).message // Cast error to Error to access message
+      details: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
     });
   };
+}
+
+// Diagnostic route to help troubleshoot
+if (serverlessHandler && typeof serverlessHandler === 'function') {
+  console.log('Serverless handler is a valid function');
+} else {
+  console.error('Serverless handler is NOT a valid function');
 }
 
 export default serverlessHandler;
