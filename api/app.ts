@@ -3,148 +3,69 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Pool } from 'pg';
+import axios from 'axios'; // Import axios
+// import { Pool } from 'pg'; // Remove pg import
 import { z } from 'zod';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:password@host:port/database'; // Provide a default for local dev
-if (!DATABASE_URL) {
-  console.warn('DATABASE_URL not set. API will error until it is configured.');
-  throw new Error('DATABASE_URL is required');
+const NEON_API_KEY = process.env.NEON_API_KEY;
+const NEON_DATA_API_URL = process.env.NEON_DATA_API_URL || 'https://your-neon-data-api-endpoint/rest/v1'; // Default for local dev
+
+if (!NEON_API_KEY) {
+  console.warn('NEON_API_KEY not set. Data API calls will fail until it is configured.');
+  throw new Error('NEON_API_KEY is required');
 }
-const pool = new Pool({
-  connectionString: DATABASE_URL
-});
+if (!NEON_DATA_API_URL) {
+  console.warn('NEON_DATA_API_URL not set. Data API calls will fail until it is configured.');
+  throw new Error('NEON_DATA_API_URL is required');
+}
 
-export async function ensureSchema() {
-  const client = await pool.connect();
+// Remove DATABASE_URL and pool setup
+// const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:password@host:port/database';
+// if (!DATABASE_URL) {
+//   console.warn('DATABASE_URL not set. API will error until it is configured.');
+//   throw new Error('DATABASE_URL is required');
+// }
+// const pool = new Pool({
+//   connectionString: DATABASE_URL
+// });
+
+// Helper for making authenticated Data API requests
+async function neonDataApiRequest(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any, queryParams?: any) {
   try {
-    await client.query(`CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'mr',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    
-    await client.query(`CREATE TABLE IF NOT EXISTS doctors (
-      id SERIAL PRIMARY KEY,
-      code TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      specialty TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    
-    await client.query(`CREATE TABLE IF NOT EXISTS products (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'Active',
-      price NUMERIC(12,2) DEFAULT 0,
-      product_type TEXT, // e.g., 'tablet', 'liquid'
-      packaging_type TEXT, // e.g., 'strip', 'bottle', 'vial'
-      strips_per_box INTEGER, // For tablets in strips
-      units_per_strip INTEGER, // For tablets in strips (e.g., 10 tablets/strip)
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    
-    await client.query(`CREATE TABLE IF NOT EXISTS investments (
-      id SERIAL PRIMARY KEY,
-      doctor_id INTEGER REFERENCES doctors(id),
-      doctor_code TEXT,
-      doctor_name TEXT,
-      amount NUMERIC(12,2) NOT NULL,
-      investment_date DATE NOT NULL,
-      expected_returns NUMERIC(12,2),
-      actual_returns NUMERIC(12,2),
-      preferences TEXT[],
-      notes TEXT,
-      created_by INTEGER REFERENCES users(id),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    
-    await client.query(`CREATE TABLE IF NOT EXISTS bills (
-      id SERIAL PRIMARY KEY,
-      merchant TEXT,
-      bill_date DATE,
-      total NUMERIC(12,2),
-      items JSONB,
-      raw_text TEXT,
-      extracted JSONB,
-      created_by INTEGER REFERENCES users(id),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    
-    await client.query(`CREATE TABLE IF NOT EXISTS activity_logs (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
-      action TEXT NOT NULL,
-      entity_type TEXT NOT NULL,
-      entity_id INTEGER,
-      details JSONB,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${NEON_API_KEY}`,
+    };
+    let url = `${NEON_DATA_API_URL}${path}`;
 
-    await client.query(`CREATE TABLE IF NOT EXISTS pharmacies (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      city TEXT NOT NULL,
-      address TEXT NOT NULL,
-      product_with_count_given JSONB DEFAULT '[]'::jsonb,
-      date_given DATE NOT NULL,
-      current_stock_owns JSONB DEFAULT '[]'::jsonb,
-      due_date_amount DATE NOT NULL,
-      scheme_applied TEXT,
-      created_by INTEGER REFERENCES users(id),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-
-    const { rows } = await client.query('SELECT * FROM users WHERE email = $1', ['admin@aarezhealth.com']);
-    if (rows.length === 0) {
-      console.log('Creating default admin user...');
-      const password_hash = await bcrypt.hash('admin123', 10);
-      await client.query(
-        'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-        ['Umbra', 'admin@aarezhealth.com', password_hash, 'admin']
-      );
-      console.log('Default admin user created: admin@aarezhealth.com / admin123');
-
-    // Add 3 additional users with role 'user'
-    const extraUsers = [
-      { name: 'User One', email: 'user1@aarezhealth.com', password: 'user123' },
-      { name: 'User Two', email: 'user2@aarezhealth.com', password: 'user123' },
-      { name: 'User Three', email: 'user3@aarezhealth.com', password: 'user123' }
-    ];
-    for (const u of extraUsers) {
-      const { rows: userRows } = await client.query('SELECT * FROM users WHERE email = $1', [u.email]);
-      if (userRows.length === 0) {
-        const password_hash = await bcrypt.hash(u.password, 10);
-        await client.query(
-          'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-          [u.name, u.email, password_hash, 'user']
-        );
-        console.log(`Default user created: ${u.email} / ${u.password}`);
-      }
+    let response;
+    if (method === 'get') {
+      response = await axios.get(url, { headers, params: queryParams });
+    } else if (method === 'post') {
+      response = await axios.post(url, data, { headers });
+    } else if (method === 'put') {
+      response = await axios.put(url, data, { headers });
+    } else if (method === 'delete') {
+      response = await axios.delete(url, { headers, data: data || queryParams }); // delete can use data or params
     }
-    }
-
-    const { rows: mrRows } = await client.query('SELECT * FROM users WHERE email = $1', ['mr@aarezhealth.com']);
-    if (mrRows.length === 0) {
-      console.log('Creating default MR user...');
-      const password_hash = await bcrypt.hash('mr123', 10);
-      await client.query(
-        'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-        ['MR User', 'mr@aarezhealth.com', password_hash, 'mr']
-      );
-      console.log('Default MR user created: mr@aarezhealth.com / mr123');
-    }
-  } finally {
-    client.release();
+    return response?.data; // Return the data part of the response
+  } catch (error: any) {
+    console.error(`Neon Data API ${method.toUpperCase()} request to ${path} failed:`, error.response?.data || error.message);
+    throw new Error(`Data API request failed: ${error.response?.data?.message || error.message}`);
   }
 }
+
+// export async function ensureSchema() {
+//   // This function will need a major refactor as it directly uses SQL with pg.Pool
+//   // For now, it will remain as is, but will not work with the Data API.
+//   // We need to implement schema creation via Data API (if supported) or a separate migration tool.
+//   console.warn('ensureSchema() currently uses pg.Pool and will not work with Neon Data API. Manual schema creation or a migration strategy is required.');
+//   // For now, we'll mock a successful schema creation to avoid immediate blocking errors
+//   return Promise.resolve();
+// }
 
 const swaggerOptions = {
   definition: {
@@ -345,22 +266,33 @@ export function createApp() {
       const { name, email, password } = registerSchema.parse(req.body);
       const password_hash = await bcrypt.hash(password, 10);
       
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, role',
-          [name, email, password_hash]
-        );
-        const user = result.rows[0];
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for registration is not yet implemented.');
+      res.status(501).send('Data API integration for registration is not yet implemented.');
+    
+      // Refactor to Data API
+      const existingUsers = await neonDataApiRequest('get', '/users', { email: `eq.${email}` });
+      if (existingUsers && existingUsers.length > 0) {
+        return res.status(409).send('Email exists');
+      }
+    
+      const newUser = await neonDataApiRequest('post', '/users', {
+        name,
+        email,
+        password_hash,
+        role: 'user', // Default role
+      });
+    
+      if (newUser && newUser.length > 0) {
+        const user = newUser[0];
         setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
         res.json(user);
-      } catch (e: any) {
-        if (String(e?.message || '').includes('duplicate key')) return res.status(409).send('Email exists');
-        // Pass other errors to the error handling middleware
-        next(e);
-      } finally {
-        client.release();
+      } else {
+        throw new Error('Failed to create user via Data API.');
       }
+    
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
@@ -410,7 +342,6 @@ export function createApp() {
    *                 name:
    *                   type: string
    *                 email:
-   *                   type: string
    *                 role:
    *                   type: string
    *       401:
@@ -420,22 +351,24 @@ export function createApp() {
    */
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
-    const client = await pool.connect();
-    try {
-      const result = await client.query(
-        'SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1',
-        [email]
-      );
-      const user = result.rows[0];
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for login is not yet implemented.');
+    res.status(501).send('Data API integration for login is not yet implemented.');
+
+    // Refactor to Data API
+    const users = await neonDataApiRequest('get', '/users', { email: `eq.${email}` });
+    const user = users && users.length > 0 ? users[0] : null;
+
       if (!user) return res.status(401).send('Invalid credentials');
+
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) return res.status(401).send('Invalid credentials');
+
       setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
       const { password_hash, ...safe } = user;
       res.json(safe);
-    } finally {
-      client.release();
-    }
   });
 
   app.get('/api/auth/me', async (req: any, res) => {
@@ -443,16 +376,16 @@ export function createApp() {
     if (!token) return res.json(null);
     try {
       const payload: any = jwt.verify(token, JWT_SECRET);
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          'SELECT id, name, email, role FROM users WHERE id = $1',
-          [payload.id]
-        );
-        res.json(result.rows[0] || null);
-      } finally {
-        client.release();
-      }
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for me endpoint is not yet implemented.');
+      res.status(501).send('Data API integration for me endpoint is not yet implemented.');
+
+      // Refactor to Data API
+      const users = await neonDataApiRequest('get', '/users', { id: `eq.${payload.id}` });
+      res.json(users && users.length > 0 ? users[0] : null);
+
     } catch {
       res.json(null);
     }
@@ -465,26 +398,31 @@ export function createApp() {
 
   // Doctors
   app.get('/api/doctors', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM doctors ORDER BY created_at DESC LIMIT 100');
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for doctors endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for doctors endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    const doctors = await neonDataApiRequest('get', '/doctors', {}, { limit: 100, order: 'created_at.desc' });
+    res.json(doctors);
   });
   
   app.post('/api/doctors', requireAuth, async (req: any, res) => {
     const { code, name, specialty } = req.body;
-    const client = await pool.connect();
-    try {
-      const result = await client.query(
-        'INSERT INTO doctors (code, name, specialty) VALUES ($1, $2, $3) RETURNING *',
-        [code, name, specialty]
-      );
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for doctors POST endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for doctors POST endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    const newDoctor = await neonDataApiRequest('post', '/doctors', { code, name, specialty });
+    if (newDoctor && newDoctor.length > 0) {
+      res.json(newDoctor[0]);
+    } else {
+      throw new Error('Failed to create doctor via Data API.');
     }
   });
 
@@ -501,13 +439,15 @@ export function createApp() {
   });
 
   app.get('/api/products', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM products ORDER BY created_at DESC LIMIT 200');
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for products endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for products endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    const products = await neonDataApiRequest('get', '/products', {}, { limit: 200, order: 'created_at.desc' });
+    res.json(products);
   });
   
   app.post('/api/products', requireAuth, async (req: any, res, next) => {
@@ -515,16 +455,22 @@ export function createApp() {
       const validatedData = productSchema.parse(req.body);
       const { name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip } = validatedData;
 
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          'INSERT INTO products (name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-          [name, category, status, price, product_type || null, packaging_type || null, strips_per_box || null, units_per_strip || null]
-        );
-        res.status(201).json(result.rows[0]);
-      } finally {
-        client.release();
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for products POST endpoint is not yet implemented.');
+      res.status(501).send('Data API integration for products POST endpoint is not yet implemented.');
+    
+      // Refactor to Data API
+      const newProduct = await neonDataApiRequest('post', '/products', {
+        name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip
+      });
+      if (newProduct && newProduct.length > 0) {
+        res.status(201).json(newProduct[0]);
+      } else {
+        throw new Error('Failed to create product via Data API.');
       }
+
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
@@ -537,31 +483,21 @@ export function createApp() {
     const { id } = req.params;
     try {
       const validatedData = productSchema.partial().parse(req.body);
-      const updateFields: string[] = [];
-      const updateValues: any[] = [];
-      let paramIndex = 1;
 
-      for (const key in validatedData) {
-        if (validatedData.hasOwnProperty(key)) {
-          updateFields.push(`${key}=$${paramIndex++}`);
-          updateValues.push((validatedData as any)[key]);
-        }
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for products PUT endpoint is not yet implemented.');
+      res.status(501).send('Data API integration for products PUT endpoint is not yet implemented.');
+
+      // Refactor to Data API
+      const updatedProduct = await neonDataApiRequest('put', '/products', validatedData, { id: `eq.${id}` });
+      if (updatedProduct && updatedProduct.length > 0) {
+        res.json(updatedProduct[0]);
+      } else {
+        return res.status(404).send('Product not found');
       }
 
-      if (updateValues.length === 0) return res.status(400).send('No fields to update');
-
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          `UPDATE products SET ${updateFields.join(', ')} WHERE id=$${paramIndex} RETURNING * `,
-          [...updateValues, id]
-        );
-
-        if (result.rows.length === 0) return res.status(404).send('Product not found');
-        res.json(result.rows[0]);
-      } finally {
-        client.release();
-      }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
@@ -572,97 +508,146 @@ export function createApp() {
 
   // Investments
   app.get('/api/investments', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments endpoint is not yet implemented.');
+  
+    // Refactor to Data API
       const { where, params } = buildInvestmentWhere(req.query || {});
-      const sql = `SELECT * FROM investments ${where} ORDER BY investment_date DESC, created_at DESC LIMIT 500`;
-      const result = await client.query(sql, params);
-      res.json(result.rows);
-    } finally {
-      client.release();
+    // Convert Knex-like params to Data API query parameters
+    const queryParams: Record<string, string> = {};
+    // Assuming `where` will be a string like 'investment_date >= $1 AND ...'
+    // and params is an array, this conversion needs to be more sophisticated
+    // For now, a simplified approach:
+    if (req.query.month) queryParams.month = `eq.${req.query.month}`;
+    if (req.query.year) queryParams.year = `eq.${req.query.year}`;
+    if (req.query.startDate) queryParams.investment_date = `gte.${req.query.startDate}`;
+    if (req.query.endDate) queryParams.investment_date_end = `lte.${req.query.endDate}`;
+    if (req.query.doctor && req.query.doctor !== 'All Doctors') {
+      // Data API might not support OR directly in query params, might need multiple filters or views
+      queryParams['or'] = `(doctor_code.eq.${req.query.doctor},doctor_name.eq.${req.query.doctor})`;
     }
+
+    const investments = await neonDataApiRequest('get', '/investments', {}, {
+      ...queryParams,
+      limit: 500,
+      order: 'investment_date.desc,created_at.desc'
+    });
+    res.json(investments);
   });
   
   app.post('/api/investments', requireAuth, async (req: any, res) => {
     const { doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes } = req.body;
-    const client = await pool.connect();
-    try {
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments POST endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments POST endpoint is not yet implemented.');
+
+    // Refactor to Data API
       let doctor_id = null;
-      let doctor_code = null; // We'll set this if we create a new doctor
+    let doctor_code = null;
 
       if (doctor_name) {
-        // Try to find an existing doctor
-        let doctorResult = await client.query('SELECT id, code FROM doctors WHERE name = $1', [doctor_name]);
-        if (doctorResult.rows.length > 0) {
-          doctor_id = doctorResult.rows[0].id;
-          doctor_code = doctorResult.rows[0].code;
+      const doctorResult = await neonDataApiRequest('get', '/doctors', { name: `eq.${doctor_name}` });
+      if (doctorResult && doctorResult.length > 0) {
+        doctor_id = doctorResult[0].id;
+        doctor_code = doctorResult[0].code;
         } else {
-          // If doctor not found, create a new one
-          // Generate a simple code, e.g., DOC-UUID_SHORT_HASH
           const newDoctorCode = `DOC-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-          const newDoctorResult = await client.query(
-            'INSERT INTO doctors (name, code) VALUES ($1, $2) RETURNING id, code',
-            [doctor_name, newDoctorCode]
-          );
-          doctor_id = newDoctorResult.rows[0].id;
-          doctor_code = newDoctorResult.rows[0].code;
+        const newDoctorResult = await neonDataApiRequest('post', '/doctors', { name: doctor_name, code: newDoctorCode });
+        if (newDoctorResult && newDoctorResult.length > 0) {
+          doctor_id = newDoctorResult[0].id;
+          doctor_code = newDoctorResult[0].code;
+        } else {
+          throw new Error('Failed to create new doctor via Data API.');
         }
       }
-
-      const result = await client.query(
-        'INSERT INTO investments (doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-        [doctor_id||null, doctor_code||null, doctor_name||null, amount, investment_date, expected_returns||null, actual_returns||null, preferences||null, notes||null, req.user.id]
-      );
-      res.json(result.rows[0]);
-
-      // Log activity
-      await client.query(
-        'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-        [req.user.id, 'CREATE', 'investment', result.rows[0].id, JSON.stringify({ new_investment: result.rows[0] })]
-      );
-
-    } finally {
-      client.release();
     }
+
+    const newInvestment = await neonDataApiRequest('post', '/investments', {
+      doctor_id: doctor_id || null,
+      doctor_code: doctor_code || null,
+      doctor_name: doctor_name || null,
+      amount,
+      investment_date,
+      expected_returns: expected_returns || null,
+      actual_returns: actual_returns || null,
+      preferences: preferences || null,
+      notes: notes || null,
+      created_by: req.user.id,
+    });
+
+    if (newInvestment && newInvestment.length > 0) {
+      // Log activity
+      await neonDataApiRequest('post', '/activity_logs', {
+        user_id: req.user.id,
+        action: 'CREATE',
+        entity_type: 'investment',
+        entity_id: newInvestment[0].id,
+        details: JSON.stringify({ new_investment: newInvestment[0] }),
+      });
+      res.json(newInvestment[0]);
+    } else {
+      throw new Error('Failed to create investment via Data API.');
+    }
+
   });
 
   app.put('/api/investments/:id', requireAuth, async (req: any, res) => {
     const { id } = req.params;
     const { doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes } = req.body;
-    const client = await pool.connect();
-    try {
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments PUT endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments PUT endpoint is not yet implemented.');
+
+    // Refactor to Data API
       let doctor_id = null;
       let doctor_code = null;
 
       if (doctor_name) {
-        let doctorResult = await client.query('SELECT id, code FROM doctors WHERE name = $1', [doctor_name]);
-        if (doctorResult.rows.length > 0) {
-          doctor_id = doctorResult.rows[0].id;
-          doctor_code = doctorResult.rows[0].code;
+      const doctorResult = await neonDataApiRequest('get', '/doctors', { name: `eq.${doctor_name}` });
+      if (doctorResult && doctorResult.length > 0) {
+        doctor_id = doctorResult[0].id;
+        doctor_code = doctorResult[0].code;
         } else {
-          // If doctor not found, create a new one
           const newDoctorCode = `DOC-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-          const newDoctorResult = await client.query(
-            'INSERT INTO doctors (name, code) VALUES ($1, $2) RETURNING id, code',
-            [doctor_name, newDoctorCode]
-          );
-          doctor_id = newDoctorResult.rows[0].id;
-          doctor_code = newDoctorResult.rows[0].code;
+        const newDoctorResult = await neonDataApiRequest('post', '/doctors', { name: doctor_name, code: newDoctorCode });
+        if (newDoctorResult && newDoctorResult.length > 0) {
+          doctor_id = newDoctorResult[0].id;
+          doctor_code = newDoctorResult[0].code;
+        } else {
+          throw new Error('Failed to create new doctor via Data API.');
         }
       }
+    }
 
-      // Fetch old data before updating
-      const oldDataResult = await client.query('SELECT * FROM investments WHERE id = $1', [id]);
-      const old_data = oldDataResult.rows[0];
+    // Fetch old data before updating for activity logging
+    const oldDataResult = await neonDataApiRequest('get', '/investments', { id: `eq.${id}` });
+    const old_data = oldDataResult && oldDataResult.length > 0 ? oldDataResult[0] : null;
 
-      const result = await client.query(
-        'UPDATE investments SET doctor_id=$1, doctor_code=$2, doctor_name=$3, amount=$4, investment_date=$5, expected_returns=$6, actual_returns=$7, preferences=$8, notes=$9 WHERE id=$10 RETURNING * ',
-        [doctor_id||null, doctor_code||null, doctor_name||null, amount, investment_date, expected_returns||null, actual_returns||null, preferences||null, notes||null, id]
-      );
-      if (result.rows.length === 0) return res.status(404).send('Investment not found');
+    if (!old_data) return res.status(404).send('Investment not found');
 
-      // Log activity with specific changes
-      const new_data = result.rows[0]; // The updated row from the DB
+    const updatedData = {
+      doctor_id: doctor_id || null,
+      doctor_code: doctor_code || null,
+      doctor_name: doctor_name || null,
+      amount,
+      investment_date,
+      expected_returns: expected_returns || null,
+      actual_returns: actual_returns || null,
+      preferences: preferences || null,
+      notes: notes || null,
+    };
+
+    const updatedInvestment = await neonDataApiRequest('put', '/investments', updatedData, { id: `eq.${id}` });
+
+    if (updatedInvestment && updatedInvestment.length > 0) {
+      const new_data = updatedInvestment[0];
       const changes: string[] = [];
 
       const fieldsToCompare = [
@@ -683,7 +668,6 @@ export function createApp() {
         }
       }
 
-      // Handle preferences, which are TEXT[]
       const oldPreferences = new Set(old_data.preferences ? old_data.preferences.map((p: string) => p.trim()) : []);
       const newPreferences = new Set(new_data.preferences ? new_data.preferences.map((p: string) => p.trim()) : []);
 
@@ -704,18 +688,19 @@ export function createApp() {
         detailsMessage += ' No significant changes detected.';
       }
 
-      await client.query(
-        'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-        [req.user.id, 'UPDATE', 'investment', id, detailsMessage]
-      );
+      await neonDataApiRequest('post', '/activity_logs', {
+        user_id: req.user.id,
+        action: 'UPDATE',
+        entity_type: 'investment',
+        entity_id: id,
+        details: detailsMessage,
+      });
 
-      res.json(result.rows[0]);
-    } catch (err) {
-      console.error('Failed to update investment:', err);
-      res.status(500).send('Failed to update investment');
-    } finally {
-      client.release();
+      res.json(new_data);
+    } else {
+      return res.status(404).send('Investment not found');
     }
+
   });
 
   /**
@@ -748,149 +733,245 @@ export function createApp() {
    */
   app.delete('/api/investments/:id', requireAuth, requireRole('admin'), async (req: any, res) => {
     const { id } = req.params;
-    const client = await pool.connect();
-    try {
-      // Check if investment exists before deleting
-      const checkResult = await client.query('SELECT * FROM investments WHERE id = $1', [id]);
-      if (checkResult.rows.length === 0) return res.status(404).send('Investment not found');
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments DELETE endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments DELETE endpoint is not yet implemented.');
 
-      const deletedInvestment = checkResult.rows[0]; // Store the investment data before deletion
+    // Refactor to Data API
+    const checkResult = await neonDataApiRequest('get', '/investments', { id: `eq.${id}` });
+    if (!checkResult || checkResult.length === 0) return res.status(404).send('Investment not found');
 
-      // Perform the delete operation
-      await client.query('DELETE FROM investments WHERE id = $1', [id]);
+    const deletedInvestment = checkResult[0];
 
-      // Log activity
-      await client.query(
-        'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-        [req.user.id, 'DELETE', 'investment', id, JSON.stringify({ deleted_investment: deletedInvestment })]
-      );
+    await neonDataApiRequest('delete', '/investments', {}, { id: `eq.${id}` });
+
+    await neonDataApiRequest('post', '/activity_logs', {
+      user_id: req.user.id,
+      action: 'DELETE',
+      entity_type: 'investment',
+      entity_id: id,
+      details: JSON.stringify({ deleted_investment: deletedInvestment }),
+    });
 
       res.status(204).send();
-    } catch (err) {
-      console.error('Failed to delete investment:', err);
-      res.status(500).send('Failed to delete investment');
-    } finally {
-      client.release();
-    }
   });
 
   app.get('/api/investments/summary', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const { where, params } = buildInvestmentWhere(req.query || {});
-      const sql = `SELECT COALESCE(SUM(amount),0)::numeric AS total_investments, COALESCE(SUM(expected_returns),0)::numeric AS total_expected, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments ${where}`;
-      const result = await client.query(sql, params);
-      const r = result.rows[0] || { total_investments: 0, total_expected: 0, total_actual: 0 };
-      res.json({ 
-        totalInvestments: Number(r.total_investments), 
-        totalExpected: Number(r.total_expected), 
-        totalActual: Number(r.total_actual) 
-      });
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments summary endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments summary endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const { where, params } = buildInvestmentWhere(req.query || {}); // Still need to convert 'where' to Data API filters
+    const queryParams: Record<string, string> = {};
+
+    if (req.query.month) queryParams.month = `eq.${req.query.month}`;
+    if (req.query.year) queryParams.year = `eq.${req.query.year}`;
+    if (req.query.startDate) queryParams.investment_date = `gte.${req.query.startDate}`;
+    if (req.query.endDate) queryParams.investment_date_end = `lte.${req.query.endDate}`;
+    if (req.query.doctor && req.query.doctor !== 'All Doctors') {
+      queryParams['or'] = `(doctor_code.eq.${req.query.doctor},doctor_name.eq.${req.query.doctor})`;
     }
+
+    // This will likely require a view or a custom RPC function in Neon to handle aggregation
+    // For now, we fetch all, and aggregate in memory (not ideal for large datasets)
+    const investments = await neonDataApiRequest('get', '/investments', {}, queryParams);
+    const totalInvestments = investments.reduce((sum: number, inv: any) => sum + Number(inv.amount), 0);
+    const totalExpected = investments.reduce((sum: number, inv: any) => sum + Number(inv.expected_returns || 0), 0);
+    const totalActual = investments.reduce((sum: number, inv: any) => sum + Number(inv.actual_returns || 0), 0);
+    const roi = totalInvestments > 0 ? (totalActual / totalInvestments * 100) : 0;
+
+      res.json({ 
+      totalInvestments: Number(totalInvestments.toFixed(2)),
+      totalExpected: Number(totalExpected.toFixed(2)),
+      totalActual: Number(totalActual.toFixed(2)),
+      roi: roi.toFixed(2),
+    });
   });
 
   app.get('/api/investments/summary-by-month', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const { where, params } = buildInvestmentWhere(req.query || {});
-      const sql = `SELECT to_char(investment_date, 'YYYY-MM') AS ym, COALESCE(SUM(amount),0)::numeric AS total_amount, COALESCE(SUM(actual_returns),0)::numeric AS total_actual
-        FROM investments ${where} GROUP BY ym ORDER BY ym`;
-      const result = await client.query(sql, params);
-      const labels = result.rows.map((r: any) => r.ym);
-      const amounts = result.rows.map((r: any) => Number(r.total_amount));
-      const actuals = result.rows.map((r: any) => Number(r.total_actual));
-      res.json({ labels, amounts, actuals });
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments summary-by-month endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments summary-by-month endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const { where, params } = buildInvestmentWhere(req.query || {}); // Still need to convert 'where' to Data API filters
+    const queryParams: Record<string, string> = {};
+
+    if (req.query.month) queryParams.month = `eq.${req.query.month}`;
+    if (req.query.year) queryParams.year = `eq.${req.query.year}`;
+    if (req.query.startDate) queryParams.investment_date = `gte.${req.query.startDate}`;
+    if (req.query.endDate) queryParams.investment_date_end = `lte.${req.query.endDate}`;
+    if (req.query.doctor && req.query.doctor !== 'All Doctors') {
+      queryParams['or'] = `(doctor_code.eq.${req.query.doctor},doctor_name.eq.${req.query.doctor})`;
     }
+
+    // This will likely require a view or a custom RPC function in Neon to handle aggregation
+    // For now, we fetch all, and aggregate in memory (not ideal for large datasets)
+    const investments = await neonDataApiRequest('get', '/investments', {}, queryParams);
+
+    const monthlySummary = investments.reduce((acc: any, inv: any) => {
+      const date = new Date(inv.investment_date);
+      const ym = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      if (!acc[ym]) {
+        acc[ym] = { total_amount: 0, total_actual: 0 };
+      }
+      acc[ym].total_amount += Number(inv.amount);
+      acc[ym].total_actual += Number(inv.actual_returns || 0);
+      return acc;
+    }, {});
+
+    const sortedMonths = Object.keys(monthlySummary).sort();
+    const labels = sortedMonths;
+    const amounts = sortedMonths.map(ym => Number(monthlySummary[ym].total_amount.toFixed(2)));
+    const actuals = sortedMonths.map(ym => Number(monthlySummary[ym].total_actual.toFixed(2)));
+
+    res.json({ labels, amounts, actuals });
   });
 
   // Dashboard stats
   app.get('/api/dashboard/stats', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const investmentCountResult = await client.query('SELECT COUNT(*)::int as count FROM investments');
-      const doctorCountResult = await client.query('SELECT COUNT(DISTINCT doctor_code)::int as count FROM investments');
-      const productCountResult = await client.query('SELECT COUNT(*)::int as count FROM products');
-      const roiResult = await client.query(
-        'SELECT CASE WHEN SUM(amount) > 0 THEN (SUM(COALESCE(actual_returns, 0)) / SUM(amount) * 100)::numeric ELSE 0 END as roi FROM investments'
-      );
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for dashboard stats endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for dashboard stats endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    // This will likely require custom RPC functions or views in Neon for efficient aggregation
+    // For now, we perform multiple Data API calls and aggregate in memory (not ideal for large datasets)
+
+    const investmentCountResult = await neonDataApiRequest('get', '/investments?count=exact');
+    const investmentCount = investmentCountResult?.count || 0;
+
+    // For distinct doctor count, we might need to fetch all investments and count distinct doctors locally
+    const allInvestments = await neonDataApiRequest('get', '/investments');
+    const doctorCodes = new Set(allInvestments.map((inv: any) => inv.doctor_code).filter(Boolean));
+    const doctorCount = doctorCodes.size;
+
+    const productCountResult = await neonDataApiRequest('get', '/products?count=exact');
+    const productCount = productCountResult?.count || 0;
+
+    const roiData = await neonDataApiRequest('get', '/investments?select=amount,actual_returns');
+    const totalInvestmentsAmount = roiData.reduce((sum: number, inv: any) => sum + Number(inv.amount), 0);
+    const totalActualReturns = roiData.reduce((sum: number, inv: any) => sum + Number(inv.actual_returns || 0), 0);
+    const roi = totalInvestmentsAmount > 0 ? (totalActualReturns / totalInvestmentsAmount * 100) : 0;
       
       res.json({
-        totalInvestments: investmentCountResult.rows[0].count,
-        activeDoctors: doctorCountResult.rows[0].count,
-        products: productCountResult.rows[0].count,
-        roi: Number(roiResult.rows[0].roi || 0).toFixed(2)
-      });
-    } finally {
-      client.release();
-    }
+      totalInvestments: investmentCount,
+      activeDoctors: doctorCount,
+      products: productCount,
+      roi: roi.toFixed(2)
+    });
   });
 
   app.get('/api/investments/recent', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 10');
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for investments recent endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for investments recent endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    const recentInvestments = await neonDataApiRequest('get', '/investments', {}, { limit: 10, order: 'created_at.desc' });
+    res.json(recentInvestments);
   });
 
   // Bills
   app.get('/api/bills', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM bills ORDER BY created_at DESC LIMIT 100');
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for bills endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for bills endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    const bills = await neonDataApiRequest('get', '/bills', {}, { limit: 100, order: 'created_at.desc' });
+    res.json(bills);
   });
   
   app.post('/api/bills', requireAuth, async (req: any, res) => {
     const { merchant, bill_date, total, items, raw_text, extracted } = req.body;
-    const client = await pool.connect();
-    try {
-      const result = await client.query(
-        'INSERT INTO bills (merchant, bill_date, total, items, raw_text, extracted, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [merchant||null, bill_date||null, total||0, JSON.stringify(items||[]), raw_text||null, JSON.stringify(extracted||{}), req.user.id]
-      );
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for bills POST endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for bills POST endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const newBill = await neonDataApiRequest('post', '/bills', {
+      merchant: merchant || null,
+      bill_date: bill_date || null,
+      total: total || 0,
+      items: items || [],
+      raw_text: raw_text || null,
+      extracted: extracted || {},
+      created_by: req.user.id,
+    });
+    if (newBill && newBill.length > 0) {
+      res.json(newBill[0]);
+    } else {
+      throw new Error('Failed to create bill via Data API.');
     }
   });
 
   app.post('/api/logs', requireAuth, async (req: any, res) => {
     const { action, entity_type, entity_id, details } = req.body;
-    const client = await pool.connect();
-    try {
-      await client.query(
-        'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-        [req.user.id, action, entity_type, entity_id || null, details ? JSON.stringify(details) : null]
-      );
-      res.status(201).json({ ok: true });
-    } catch (err) {
-      console.error('Failed to create log:', err);
-      res.status(500).json({ ok: false, error: 'Failed to create log' });
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for logs endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for logs endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const newLog = await neonDataApiRequest('post', '/activity_logs', {
+      user_id: req.user.id,
+      action,
+      entity_type,
+      entity_id: entity_id || null,
+      details: details ? JSON.stringify(details) : null,
+    });
+    if (newLog && newLog.length > 0) {
+      res.status(201).json({ ok: true, log: newLog[0] });
+    } else {
+      throw new Error('Failed to create log via Data API.');
     }
   });
 
   app.get('/api/logs', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(
-        'SELECT al.*, u.name as user_name FROM activity_logs al JOIN users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT 100'
-      );
-      res.json(result.rows);
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for logs endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for logs endpoint is not yet implemented.');
+  
+    // Refactor to Data API
+    // This query needs a JOIN with the users table to get user_name.
+    // Data API does not directly support JOINs in simple queries.
+    // This will either require a VIEW in Neon or fetching users separately and joining in memory.
+    const activityLogs = await neonDataApiRequest('get', '/activity_logs', {}, { limit: 100, order: 'created_at.desc' });
+
+    // For now, fetch users separately and join in memory
+    const userIds = [...new Set(activityLogs.map((log: any) => log.user_id))];
+    let users: any[] = [];
+    if (userIds.length > 0) {
+      // Data API supports 'in' operator for filtering
+      users = await neonDataApiRequest('get', '/users', { id: `in.(${userIds.join(',')})` }, { select: 'id,name' });
     }
+    const userMap = new Map(users.map(u => [u.id, u.name]));
+
+    const logsWithUserNames = activityLogs.map((log: any) => ({
+      ...log,
+      user_name: userMap.get(log.user_id) || 'Unknown User',
+    }));
+
+    res.json(logsWithUserNames);
   });
 
   // Pharmacies
@@ -916,16 +997,29 @@ export function createApp() {
       const validatedData = pharmacySchema.parse(req.body);
       const { name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied } = validatedData;
 
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          'INSERT INTO pharmacies (name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING * ',
-          [name, city, address, JSON.stringify(product_with_count_given), date_given, JSON.stringify(current_stock_owns), due_date_amount, scheme_applied, req.user.id]
-        );
-        res.status(201).json(result.rows[0]);
-      } finally {
-        client.release();
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for pharmacies POST endpoint is not yet implemented.');
+      res.status(501).send('Data API integration for pharmacies POST endpoint is not yet implemented.');
+
+      // Refactor to Data API
+      const newPharmacy = await neonDataApiRequest('post', '/pharmacies', {
+        name, city, address,
+        product_with_count_given: JSON.stringify(product_with_count_given),
+        date_given,
+        current_stock_owns: JSON.stringify(current_stock_owns),
+        due_date_amount,
+        scheme_applied,
+        created_by: req.user.id,
+      });
+
+      if (newPharmacy && newPharmacy.length > 0) {
+        res.status(201).json(newPharmacy[0]);
+      } else {
+        throw new Error('Failed to create pharmacy via Data API.');
       }
+
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
@@ -935,24 +1029,31 @@ export function createApp() {
   });
 
   app.get('/api/pharmacies', requireAuth, async (req: any, res) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM pharmacies ORDER BY created_at DESC');
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for pharmacies endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for pharmacies endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const pharmacies = await neonDataApiRequest('get', '/pharmacies', {}, { order: 'created_at.desc' });
+    res.json(pharmacies);
   });
 
   app.get('/api/pharmacies/:id', requireAuth, async (req: any, res) => {
     const { id } = req.params;
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM pharmacies WHERE id = $1', [id]);
-      if (result.rows.length === 0) return res.status(404).send('Pharmacy not found');
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for pharmacies GET by ID endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for pharmacies GET by ID endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const pharmacy = await neonDataApiRequest('get', '/pharmacies', { id: `eq.${id}` });
+    if (pharmacy && pharmacy.length > 0) {
+      res.json(pharmacy[0]);
+    } else {
+      res.status(404).send('Pharmacy not found');
     }
   });
 
@@ -961,40 +1062,33 @@ export function createApp() {
     try {
       // Use a partial schema for updates, allowing some fields to be optional
       const validatedData = pharmacySchema.partial().parse(req.body);
-      const fields = Object.keys(validatedData).map((key, idx) => `${key}=$${idx + 1}`).join(', ');
-      const values = Object.values(validatedData);
 
-      if (values.length === 0) return res.status(400).send('No fields to update');
+      // This part of the code will need to be refactored to use the Data API
+      // For now, it will return an error as the Data API is not fully integrated
+      // and the pg.Pool is removed.
+      console.error('Data API integration for pharmacies PUT endpoint is not yet implemented.');
+      res.status(501).send('Data API integration for pharmacies PUT endpoint is not yet implemented.');
 
-      const client = await pool.connect();
-      try {
-        // Handle JSONB fields separately for stringify
-        const updateValues: any[] = [];
-        const updateFields: string[] = [];
-        let paramIndex = 1;
-
+      // Refactor to Data API
+      const updatePayload: any = {};
         for (const key in validatedData) {
           if (validatedData.hasOwnProperty(key)) {
             if (key === 'product_with_count_given' || key === 'current_stock_owns') {
-              updateFields.push(`${key}=$${paramIndex++}::jsonb`);
-              updateValues.push(JSON.stringify((validatedData as any)[key]));
+            updatePayload[key] = JSON.stringify((validatedData as any)[key]);
             } else {
-              updateFields.push(`${key}=$${paramIndex++}`);
-              updateValues.push((validatedData as any)[key]);
-            }
+            updatePayload[key] = (validatedData as any)[key];
           }
         }
-
-        const result = await client.query(
-          `UPDATE pharmacies SET ${updateFields.join(', ')} WHERE id=$${paramIndex} RETURNING * `,
-          [...updateValues, id]
-        );
-
-        if (result.rows.length === 0) return res.status(404).send('Pharmacy not found');
-        res.json(result.rows[0]);
-      } finally {
-        client.release();
       }
+
+      const updatedPharmacy = await neonDataApiRequest('put', '/pharmacies', updatePayload, { id: `eq.${id}` });
+
+      if (updatedPharmacy && updatedPharmacy.length > 0) {
+        res.json(updatedPharmacy[0]);
+      } else {
+        return res.status(404).send('Pharmacy not found');
+      }
+
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
@@ -1005,14 +1099,18 @@ export function createApp() {
 
   app.delete('/api/pharmacies/:id', requireAuth, async (req: any, res) => {
     const { id } = req.params;
-    const client = await pool.connect();
-    try {
-      const result = await client.query('DELETE FROM pharmacies WHERE id = $1 RETURNING *', [id]);
-      if (result.rows.length === 0) return res.status(404).send('Pharmacy not found');
+    // This part of the code will need to be refactored to use the Data API
+    // For now, it will return an error as the Data API is not fully integrated
+    // and the pg.Pool is removed.
+    console.error('Data API integration for pharmacies DELETE endpoint is not yet implemented.');
+    res.status(501).send('Data API integration for pharmacies DELETE endpoint is not yet implemented.');
+
+    // Refactor to Data API
+    const checkResult = await neonDataApiRequest('get', '/pharmacies', { id: `eq.${id}` });
+    if (!checkResult || checkResult.length === 0) return res.status(404).send('Pharmacy not found');
+
+    await neonDataApiRequest('delete', '/pharmacies', {}, { id: `eq.${id}` });
       res.status(204).send();
-    } finally {
-      client.release();
-    }
   });
 
   // Generic error handling middleware

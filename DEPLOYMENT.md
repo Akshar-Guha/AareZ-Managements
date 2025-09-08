@@ -49,11 +49,24 @@ Critical environment variables for the backend must be configured in your Vercel
 2.  Go to "Environment Variables".
 3.  Add the following environment variables:
     *   `JWT_SECRET`: A strong, random secret string for JWT token signing. You can generate one using a tool or simply create a long, complex string.
-    *   `DATABASE_URL`: Your PostgreSQL connection string (e.g., from Neon or another provider). This typically looks like `postgresql://user:password@host:port/database?sslmode=require`.
+    *   `NEON_DATA_API_URL`: The base URL for your Neon Data API endpoint (e.g., `https://ep-round-wave-adqhnqr0.apirest.c-2.us-east-1.aws.neon.tech/neondb/rest/v1`).
+    *   `NEON_API_KEY`: Your API key for authenticating with the Neon Data API. This can be generated in your Neon dashboard.
 
     *Make sure these variables are added for the `Production`, `Preview`, and `Development` environments if you want them to be available in all contexts.*
 
-image.png## 4. CI/CD Pipeline
+### 3.4. Run Database Migrations (One-time Setup)
+
+Before your application can fully function, you need to apply the database schema. This is done using Knex.js migrations.
+
+1.  **Obtain your `DATABASE_URL`:** From your Neon dashboard, get your traditional PostgreSQL connection string (starts with `postgresql://`). This is used by Knex for schema management, separate from the Data API.
+2.  **Set `DATABASE_URL` locally:** Set this string as a `DATABASE_URL` environment variable in your local development environment (e.g., in a `.env` file).
+3.  **Run Migrations:** In your project's root directory, execute the following command:
+    ```bash
+    npm run migrate:latest
+    ```
+    This will create all necessary tables and populate default user data in your Neon database.
+
+## 4. CI/CD Pipeline
 
 Vercel provides a seamless, built-in Continuous Integration/Continuous Deployment (CI/CD) pipeline. Once your project is connected to a Git repository, any new pushes to the connected branch (typically `main` or `master`) will automatically trigger a new build and deployment.
 
