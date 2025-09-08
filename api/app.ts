@@ -232,7 +232,10 @@ export function createApp() {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   // Health
-  app.get('/api/health', (req, res) => res.json({ ok: true }));
+  app.get('/api/health', (req, res) => {
+    console.log('[API Health] Health endpoint hit.');
+    res.json({ ok: true });
+  });
 
   // Auth
   /**
