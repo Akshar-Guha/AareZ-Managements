@@ -120,7 +120,7 @@ export function createApp() {
     credentials: true
   }));
   app.use(express.json());
-  app.use(cookieParser());
+  app.use(cookieParser(JWT_SECRET)); // Use JWT_SECRET as a secret for cookie-parser
 
   if (process.env.MIGRATE_ON_START !== 'false') {
     // Now called explicitly in api-local/server.ts, can remove this if desired
@@ -132,6 +132,7 @@ export function createApp() {
   }
   
   function setAuthCookie(res: any, token: string) {
+    console.log('[setAuthCookie] Setting auth cookie.');
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
       httpOnly: true,
@@ -143,12 +144,20 @@ export function createApp() {
   }
   
   function requireAuth(req: any, res: any, next: any) {
+    console.log('[requireAuth] Executing middleware.');
     const token = req.cookies.token;
-    if (!token) return res.status(401).send('Unauthorized');
+    console.log('[requireAuth] Token from cookies:', token ? 'PRESENT' : 'NOT PRESENT');
+    if (!token) {
+      console.log('[requireAuth] No token found, sending 401.');
+      return res.status(401).send('Unauthorized');
+    }
     try {
+      console.log('[requireAuth] Verifying token...');
       req.user = jwt.verify(token, JWT_SECRET);
+      console.log('[requireAuth] Token verified. User:', req.user.email);
       next();
     } catch (err) {
+      console.error('[requireAuth] Token verification failed:', err);
       next(err); // Pass error to the error handling middleware
     }
   }
