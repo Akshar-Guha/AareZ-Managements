@@ -21,7 +21,7 @@
     "axiom:push": "npx @axiomhq/axiom push"
   },
   "dependencies": {
-    "@axiomhq/axiom-node": "^0.12.0",
+    "@axiomhq/js": "^1.3.1",
     "@heroicons/react": "^2.2.0",
     "@neondatabase/serverless": "^0.9.5",
     "axios": "^1.11.0",

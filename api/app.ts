@@ -3,16 +3,20 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
-import { Axiom } from '@axiomhq/axiom-node';
+import { Axiom } from '@axiomhq/js'; // Changed to @axiomhq/js
 
 // Initialize Axiom client
 const axiom = new Axiom({
   token: process.env.AXIOM_TOKEN || '',
-  orgId: process.env.AXIOM_ORG_ID || ''
+  orgId: process.env.AXIOM_ORG_ID || '',
+  dataset: 'vercel-logs' // Specify a default dataset
 });
 
 // Create a new registry for custom metrics
 const register = new promClient.Registry();
+
+// Collect default metrics only once
+promClient.collectDefaultMetrics({ register });
 
 // Define custom metrics
 const httpRequestDurationMicroseconds = new promClient.Histogram({
@@ -54,13 +58,16 @@ export function createApp() {
       const startTime = Date.now();
       
       // Log request details to Axiom
-      axiom.ingest('vercel-requests', {
-        method: req.method,
-        path: req.path,
-        timestamp: new Date().toISOString(),
-        headers: {
-          userAgent: req.get('User-Agent'),
-          host: req.get('Host')
+      axiom.query.ingest({ 
+        dataset: 'vercel-requests', // Specify dataset
+        data: {
+          method: req.method,
+          path: req.path,
+          timestamp: new Date().toISOString(),
+          headers: {
+            userAgent: req.get('User-Agent'),
+            host: req.get('Host')
+          }
         }
       }).catch(console.error);
 
@@ -73,12 +80,15 @@ export function createApp() {
         const duration = Date.now() - startTime;
         
         // Log response details to Axiom
-        axiom.ingest('vercel-responses', {
-          method: req.method,
-          path: req.path,
-          statusCode: res.statusCode,
-          duration: duration,
-          timestamp: new Date().toISOString()
+        axiom.query.ingest({ 
+          dataset: 'vercel-responses', // Specify dataset
+          data: {
+            method: req.method,
+            path: req.path,
+            statusCode: res.statusCode,
+            duration: duration,
+            timestamp: new Date().toISOString()
+          }
         }).catch(console.error);
 
         end({ 
@@ -153,7 +163,10 @@ export function createApp() {
         };
         
         // Log diagnostics to Axiom
-        await axiom.ingest('vercel-diagnostics', diagnostics);
+        await axiom.query.ingest({ 
+          dataset: 'vercel-diagnostics', // Specify dataset
+          data: diagnostics
+        });
         
         res.json(diagnostics);
       } catch (error) {
@@ -185,7 +198,10 @@ export function createApp() {
       };
       
       // Log health check to Axiom
-      axiom.ingest('vercel-health-checks', healthInfo).catch(console.error);
+      axiom.query.ingest({ 
+        dataset: 'vercel-health-checks', // Specify dataset
+        data: healthInfo
+      }).catch(console.error);
       
       res.json(healthInfo);
     });
@@ -196,10 +212,13 @@ export function createApp() {
     console.error('CRITICAL: Error in createApp():', error);
     
     // Log critical error to Axiom
-    axiom.ingest('vercel-errors', {
-      type: 'createApp',
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+    axiom.query.ingest({ 
+      dataset: 'vercel-errors', // Specify dataset
+      data: {
+        type: 'createApp',
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      }
     }).catch(console.error);
     
     throw error;
