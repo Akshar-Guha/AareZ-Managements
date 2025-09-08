@@ -1,0 +1,510 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration with valid inputs",
+    "description": "Verify that a user can successfully register with valid name, email, and password meeting the password policies.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid name, valid email, and a password meeting the password policy."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is registered successfully and redirected or shown success notification."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Registration with invalid email format",
+    "description": "Verify that the registration fails when the email format is invalid and appropriate validation error is displayed.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid name, invalid email format, and a valid password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an email format validation error is displayed and registration is blocked."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Registration with weak password",
+    "description": "Verify that the registration fails when the password does not meet all strength requirements and displays proper error messages.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid name, valid email, and a weak password (e.g., missing uppercase or number)."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify password strength validation errors are shown and registration is prevented."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "User Login with correct credentials",
+    "description": "Verify that an existing registered user can log in successfully with correct credentials.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Input a registered email and correct password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is successful and dashboard page is accessible."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "User Login with incorrect password",
+    "description": "Verify that login attempt fails with incorrect password and appropriate error message is shown.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid registered email and incorrect password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is denied and a proper error message is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Access restricted routes without authentication",
+    "description": "Verify that unauthenticated users cannot access protected routes like dashboard, investments, analytics, and are redirected to login.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to navigate directly to a protected route such as /dashboard or /investments without logging in."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that access is denied and user is redirected to the login page."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Investment creation with valid data",
+    "description": "Verify that an authenticated user can create a new investment with valid input data and it appears correctly in investment list.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as an authenticated user."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the investments page."
+      },
+      {
+        "type": "action",
+        "description": "Open the new investment creation form."
+      },
+      {
+        "type": "action",
+        "description": "Fill in valid investment details."
+      },
+      {
+        "type": "action",
+        "description": "Submit the creation form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new investment appears in investment list with correct details."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Investment editing with valid data",
+    "description": "Verify that a user can edit an existing investment’s details and changes are correctly reflected in UI and backend.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as an authenticated user."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to investments page."
+      },
+      {
+        "type": "action",
+        "description": "Select an existing investment and open the edit form."
+      },
+      {
+        "type": "action",
+        "description": "Modify investment details with valid data."
+      },
+      {
+        "type": "action",
+        "description": "Submit the edit form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the updated details are displayed correctly and persisted."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Investment deletion by admin user",
+    "description": "Verify that an admin user can delete an investment via confirmation modal and investment is removed successfully.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin user."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to investments page."
+      },
+      {
+        "type": "action",
+        "description": "Click delete action on an investment."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the confirmation modal appears."
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion in the modal."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the investment is removed from the list and backend."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Investment deletion blocked for non-admin user",
+    "description": "Verify that non-admin users cannot delete investments and receive an access denied error.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a non-admin authenticated user."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to investments page."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to perform investment deletion."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access denied error is returned and deletion is blocked."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "InvestmentCard component render test",
+    "description": "Verify that the InvestmentCard component renders correctly displaying all expected investment details and action buttons.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Render the InvestmentCard component with sample investment data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all investment details (name, value, date, etc.) are displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify action buttons (view, edit, delete) are present and enabled according to user role."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "ConfirmationModal shows and triggers actions correctly",
+    "description": "Verify the ConfirmationModal component displays proper message, and Confirm and Cancel buttons trigger expected callbacks.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Render ConfirmationModal component with a confirmation message."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the message and buttons Confirm and Cancel are displayed."
+      },
+      {
+        "type": "action",
+        "description": "Simulate clicking Confirm button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify confirm callback is triggered."
+      },
+      {
+        "type": "action",
+        "description": "Simulate clicking Cancel button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cancel callback is triggered."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "StatsCard and ChartWrapper rendering on Analytics page",
+    "description": "Verify that StatsCard and ChartWrapper components render with correct data and charts on analytics dashboard.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to Analytics page."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify StatsCard components display correct statistics."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ChartWrapper renders charts according to the filtered data."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "FilterPanel filters update Analytics data",
+    "description": "Verify that applying filters (date range, doctors, months, years) in FilterPanel updates StatsCard and ChartWrapper data accordingly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to Analytics page."
+      },
+      {
+        "type": "action",
+        "description": "Apply different filters using FilterPanel."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that charts and statistics update dynamically reflecting the applied filters."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Error Handling Middleware captures and formats errors",
+    "description": "Verify that backend API errors are caught by error handling middleware and returned in standardized error response format to clients.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger known backend error (e.g. invalid input causing validation error or server error)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that error response has standardized format with error code, message and logging."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Role-Based Access Control middleware restricts API access",
+    "description": "Verify that the RBAC middleware correctly allows or denies API endpoint access based on authenticated user role, especially for sensitive operations like investment deletion.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin user and send a delete investment API request."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request succeeds with 200 or 204 status."
+      },
+      {
+        "type": "action",
+        "description": "Login as non-admin user and send a delete investment API request."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request is denied with 403 Forbidden status."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Swagger UI API documentation accessibility and correctness",
+    "description": "Verify that Swagger UI is accessible via backend documentation endpoint and API endpoints are documented accurately with request and response schemas.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the backend Swagger UI documentation endpoint."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the UI loads with interactive documentation for all API endpoints."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify API endpoints include proper schemas, methods, parameters, and examples."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Inventory and Products management CRUD operations",
+    "description": "Verify that authenticated users can view, create, edit, and delete inventory and product records correctly with UI reflecting changes.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and navigate to Inventory or Products management page."
+      },
+      {
+        "type": "action",
+        "description": "Create a new inventory or product item with valid data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new item appears correctly in the list."
+      },
+      {
+        "type": "action",
+        "description": "Edit an existing inventory or product record."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes are saved and displayed."
+      },
+      {
+        "type": "action",
+        "description": "Delete an inventory or product record if allowed."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the record is removed from list and backend."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "OCR feature functionality",
+    "description": "Verify the integrated OCR functionality processes images correctly and extracts expected text.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the OCR feature page."
+      },
+      {
+        "type": "action",
+        "description": "Upload or capture an image containing text."
+      },
+      {
+        "type": "action",
+        "description": "Run the OCR process."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that extracted text is displayed correctly and matches expected content."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Responsive UI across different devices and screen sizes",
+    "description": "Verify that the UI layouts and components render correctly and are usable on various screen sizes including desktops, tablets, and mobile devices.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open the Manager App on different screen sizes or use browser responsive mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements adjust layout properly without overlap or content cutoff."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify navigation, modals, forms, and charts remain functional and accessible."
+      }
+    ]
+  }
+]

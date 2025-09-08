@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo"
+  },
+  "include": ["src", "api", "vite.config.ts"],
+  "exclude": ["dist", "node_modules", "api/app-neon-backup.ts"]
+}
