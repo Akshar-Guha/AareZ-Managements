@@ -1,6 +1,5 @@
 import serverless from 'serverless-http';
-
-import { createApp } from './app.ts';
+import { createApp } from './app.js';
 import { Request, Response } from 'express'; // Import Request and Response types
 
 let serverlessHandler;
