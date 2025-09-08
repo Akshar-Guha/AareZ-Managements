@@ -106,8 +106,11 @@ export function createApp() {
 
   // Moved to top-level for direct export: JWT_SECRET, DATABASE_URL, pool
 
-  app.use(cors({ origin: (origin, cb) => cb(null, true), credentials: true }));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true
+  }));
+  app.use(express.json());
   app.use(cookieParser());
 
   if (process.env.MIGRATE_ON_START !== 'false') {
@@ -269,9 +272,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for registration is not yet implemented.');
-      res.status(501).send('Data API integration for registration is not yet implemented.');
-    
       // Refactor to Data API
       const existingUsers = await neonDataApiRequest('get', '/users', { email: `eq.${email}` });
       if (existingUsers && existingUsers.length > 0) {
@@ -354,9 +354,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for login is not yet implemented.');
-    res.status(501).send('Data API integration for login is not yet implemented.');
-
     // Refactor to Data API
     const users = await neonDataApiRequest('get', '/users', { email: `eq.${email}` });
     const user = users && users.length > 0 ? users[0] : null;
@@ -379,9 +376,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for me endpoint is not yet implemented.');
-      res.status(501).send('Data API integration for me endpoint is not yet implemented.');
-
       // Refactor to Data API
       const users = await neonDataApiRequest('get', '/users', { id: `eq.${payload.id}` });
       res.json(users && users.length > 0 ? users[0] : null);
@@ -401,9 +395,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for doctors endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for doctors endpoint is not yet implemented.');
-  
     // Refactor to Data API
     const doctors = await neonDataApiRequest('get', '/doctors', {}, { limit: 100, order: 'created_at.desc' });
     res.json(doctors);
@@ -414,9 +405,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for doctors POST endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for doctors POST endpoint is not yet implemented.');
-  
     // Refactor to Data API
     const newDoctor = await neonDataApiRequest('post', '/doctors', { code, name, specialty });
     if (newDoctor && newDoctor.length > 0) {
@@ -442,9 +430,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for products endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for products endpoint is not yet implemented.');
-  
     // Refactor to Data API
     const products = await neonDataApiRequest('get', '/products', {}, { limit: 200, order: 'created_at.desc' });
     res.json(products);
@@ -458,9 +443,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for products POST endpoint is not yet implemented.');
-      res.status(501).send('Data API integration for products POST endpoint is not yet implemented.');
-    
       // Refactor to Data API
       const newProduct = await neonDataApiRequest('post', '/products', {
         name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip
@@ -487,10 +469,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for products PUT endpoint is not yet implemented.');
-      res.status(501).send('Data API integration for products PUT endpoint is not yet implemented.');
-
-      // Refactor to Data API
       const updatedProduct = await neonDataApiRequest('put', '/products', validatedData, { id: `eq.${id}` });
       if (updatedProduct && updatedProduct.length > 0) {
         res.json(updatedProduct[0]);
@@ -511,11 +489,7 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments endpoint is not yet implemented.');
-  
-    // Refactor to Data API
-      const { where, params } = buildInvestmentWhere(req.query || {});
+    const { where, params } = buildInvestmentWhere(req.query || {});
     // Convert Knex-like params to Data API query parameters
     const queryParams: Record<string, string> = {};
     // Assuming `where` will be a string like 'investment_date >= $1 AND ...'
@@ -543,9 +517,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments POST endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments POST endpoint is not yet implemented.');
-
     // Refactor to Data API
       let doctor_id = null;
     let doctor_code = null;
@@ -602,9 +573,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments PUT endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments PUT endpoint is not yet implemented.');
-
     // Refactor to Data API
       let doctor_id = null;
       let doctor_code = null;
@@ -736,10 +704,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments DELETE endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments DELETE endpoint is not yet implemented.');
-
-    // Refactor to Data API
     const checkResult = await neonDataApiRequest('get', '/investments', { id: `eq.${id}` });
     if (!checkResult || checkResult.length === 0) return res.status(404).send('Investment not found');
 
@@ -762,10 +726,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments summary endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments summary endpoint is not yet implemented.');
-
-    // Refactor to Data API
     const { where, params } = buildInvestmentWhere(req.query || {}); // Still need to convert 'where' to Data API filters
     const queryParams: Record<string, string> = {};
 
@@ -797,10 +757,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments summary-by-month endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments summary-by-month endpoint is not yet implemented.');
-
-    // Refactor to Data API
     const { where, params } = buildInvestmentWhere(req.query || {}); // Still need to convert 'where' to Data API filters
     const queryParams: Record<string, string> = {};
 
@@ -840,9 +796,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for dashboard stats endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for dashboard stats endpoint is not yet implemented.');
-
     // Refactor to Data API
     // This will likely require custom RPC functions or views in Neon for efficient aggregation
     // For now, we perform multiple Data API calls and aggregate in memory (not ideal for large datasets)
@@ -875,9 +828,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for investments recent endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for investments recent endpoint is not yet implemented.');
-  
     // Refactor to Data API
     const recentInvestments = await neonDataApiRequest('get', '/investments', {}, { limit: 10, order: 'created_at.desc' });
     res.json(recentInvestments);
@@ -888,10 +838,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for bills endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for bills endpoint is not yet implemented.');
-  
-    // Refactor to Data API
     const bills = await neonDataApiRequest('get', '/bills', {}, { limit: 100, order: 'created_at.desc' });
     res.json(bills);
   });
@@ -901,9 +847,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for bills POST endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for bills POST endpoint is not yet implemented.');
-
     // Refactor to Data API
     const newBill = await neonDataApiRequest('post', '/bills', {
       merchant: merchant || null,
@@ -926,9 +869,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for logs endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for logs endpoint is not yet implemented.');
-
     // Refactor to Data API
     const newLog = await neonDataApiRequest('post', '/activity_logs', {
       user_id: req.user.id,
@@ -948,9 +888,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for logs endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for logs endpoint is not yet implemented.');
-  
     // Refactor to Data API
     // This query needs a JOIN with the users table to get user_name.
     // Data API does not directly support JOINs in simple queries.
@@ -1000,9 +937,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for pharmacies POST endpoint is not yet implemented.');
-      res.status(501).send('Data API integration for pharmacies POST endpoint is not yet implemented.');
-
       // Refactor to Data API
       const newPharmacy = await neonDataApiRequest('post', '/pharmacies', {
         name, city, address,
@@ -1032,10 +966,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for pharmacies endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for pharmacies endpoint is not yet implemented.');
-
-    // Refactor to Data API
     const pharmacies = await neonDataApiRequest('get', '/pharmacies', {}, { order: 'created_at.desc' });
     res.json(pharmacies);
   });
@@ -1045,9 +975,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for pharmacies GET by ID endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for pharmacies GET by ID endpoint is not yet implemented.');
-
     // Refactor to Data API
     const pharmacy = await neonDataApiRequest('get', '/pharmacies', { id: `eq.${id}` });
     if (pharmacy && pharmacy.length > 0) {
@@ -1066,10 +993,6 @@ export function createApp() {
       // This part of the code will need to be refactored to use the Data API
       // For now, it will return an error as the Data API is not fully integrated
       // and the pg.Pool is removed.
-      console.error('Data API integration for pharmacies PUT endpoint is not yet implemented.');
-      res.status(501).send('Data API integration for pharmacies PUT endpoint is not yet implemented.');
-
-      // Refactor to Data API
       const updatePayload: any = {};
         for (const key in validatedData) {
           if (validatedData.hasOwnProperty(key)) {
@@ -1102,9 +1025,6 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    console.error('Data API integration for pharmacies DELETE endpoint is not yet implemented.');
-    res.status(501).send('Data API integration for pharmacies DELETE endpoint is not yet implemented.');
-
     // Refactor to Data API
     const checkResult = await neonDataApiRequest('get', '/pharmacies', { id: `eq.${id}` });
     if (!checkResult || checkResult.length === 0) return res.status(404).send('Pharmacy not found');
