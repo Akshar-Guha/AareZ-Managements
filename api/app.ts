@@ -8,8 +8,7 @@ import { Axiom } from '@axiomhq/js'; // Changed to @axiomhq/js
 // Initialize Axiom client
 const axiom = new Axiom({
   token: process.env.AXIOM_TOKEN || '',
-  orgId: process.env.AXIOM_ORG_ID || '',
-  dataset: 'vercel-logs' // Specify a default dataset
+  orgId: process.env.AXIOM_ORG_ID || ''
 });
 
 // Create a new registry for custom metrics
@@ -58,16 +57,13 @@ export function createApp() {
       const startTime = Date.now();
       
       // Log request details to Axiom
-      axiom.query.ingest({ 
-        dataset: 'vercel-requests', // Specify dataset
-        data: {
-          method: req.method,
-          path: req.path,
-          timestamp: new Date().toISOString(),
-          headers: {
-            userAgent: req.get('User-Agent'),
-            host: req.get('Host')
-          }
+      axiom.log('vercel-requests', {
+        method: req.method,
+        path: req.path,
+        timestamp: new Date().toISOString(),
+        headers: {
+          userAgent: req.get('User-Agent'),
+          host: req.get('Host')
         }
       }).catch(console.error);
 
@@ -80,15 +76,12 @@ export function createApp() {
         const duration = Date.now() - startTime;
         
         // Log response details to Axiom
-        axiom.query.ingest({ 
-          dataset: 'vercel-responses', // Specify dataset
-          data: {
-            method: req.method,
-            path: req.path,
-            statusCode: res.statusCode,
-            duration: duration,
-            timestamp: new Date().toISOString()
-          }
+        axiom.log('vercel-responses', {
+          method: req.method,
+          path: req.path,
+          statusCode: res.statusCode,
+          duration: duration,
+          timestamp: new Date().toISOString()
         }).catch(console.error);
 
         end({ 
@@ -113,7 +106,7 @@ export function createApp() {
     app.use(promBundle({
       includeMethod: true,
       includePath: true,
-      promClient: promClient,
+      // Removed promClient: promClient as it conflicts with global collectDefaultMetrics
       metricsPath: '/metrics',
       promRegistry: register
     }));
@@ -163,10 +156,7 @@ export function createApp() {
         };
         
         // Log diagnostics to Axiom
-        await axiom.query.ingest({ 
-          dataset: 'vercel-diagnostics', // Specify dataset
-          data: diagnostics
-        });
+        await axiom.log('vercel-diagnostics', diagnostics);
         
         res.json(diagnostics);
       } catch (error) {
@@ -198,10 +188,7 @@ export function createApp() {
       };
       
       // Log health check to Axiom
-      axiom.query.ingest({ 
-        dataset: 'vercel-health-checks', // Specify dataset
-        data: healthInfo
-      }).catch(console.error);
+      axiom.log('vercel-health-checks', healthInfo).catch(console.error);
       
       res.json(healthInfo);
     });
@@ -212,13 +199,10 @@ export function createApp() {
     console.error('CRITICAL: Error in createApp():', error);
     
     // Log critical error to Axiom
-    axiom.query.ingest({ 
-      dataset: 'vercel-errors', // Specify dataset
-      data: {
-        type: 'createApp',
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      }
+    axiom.log('vercel-errors', {
+      type: 'createApp',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
     }).catch(console.error);
     
     throw error;
