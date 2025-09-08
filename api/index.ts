@@ -1,17 +1,18 @@
 import serverless from 'serverless-http';
 import { createApp } from './app.js';
+import { Request, Response } from 'express'; // Import Request and Response types
 
 let serverlessHandler;
 
 try {
   const app = createApp();
   serverlessHandler = serverless(app);
-} catch (error) {
+} catch (error: unknown) { // Explicitly type error as unknown
   console.error('Failed to initialize serverless function:', error);
-  serverlessHandler = (req, res) => {
+  serverlessHandler = (req: Request, res: Response) => { // Explicitly type req and res
     res.status(500).json({ 
       error: 'Server initialization failed', 
-      details: error.message 
+      details: (error as Error).message // Cast error to Error to access message
     });
   };
 }
