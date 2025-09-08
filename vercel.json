@@ -22,9 +22,5 @@
       "src": "/(.*)",
       "dest": "/dist/$1"
     }
-  ],
-  "env": {
-    "JWT_SECRET": "@jwt_secret",
-    "DATABASE_URL": "@database_url"
-  }
+  ]
 }
