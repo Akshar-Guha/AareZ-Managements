@@ -115,12 +115,20 @@ export function createApp() {
 
   // Moved to top-level for direct export: JWT_SECRET, DATABASE_URL, pool
 
+  console.log('[createApp] Registering CORS middleware...');
   app.use(cors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true
   }));
+  console.log('[createApp] CORS middleware registered.');
+
+  console.log('[createApp] Registering express.json middleware...');
   app.use(express.json());
+  console.log('[createApp] express.json middleware registered.');
+
+  console.log('[createApp] Registering cookie-parser middleware...');
   app.use(cookieParser(JWT_SECRET)); // Use JWT_SECRET as a secret for cookie-parser
+  console.log('[createApp] cookie-parser middleware registered.');
 
   if (process.env.MIGRATE_ON_START !== 'false') {
     // Now called explicitly in api-local/server.ts, can remove this if desired
