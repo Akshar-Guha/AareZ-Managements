@@ -14,12 +14,10 @@ const NEON_API_KEY = process.env.NEON_API_KEY;
 const NEON_DATA_API_URL = process.env.NEON_DATA_API_URL || 'https://your-neon-data-api-endpoint/rest/v1'; // Default for local dev
 
 if (!NEON_API_KEY) {
-  console.warn('NEON_API_KEY not set. Data API calls will fail until it is configured.');
-  throw new Error('NEON_API_KEY is required');
+  console.error('NEON_API_KEY not set. Data API calls will fail.');
 }
 if (!NEON_DATA_API_URL) {
-  console.warn('NEON_DATA_API_URL not set. Data API calls will fail until it is configured.');
-  throw new Error('NEON_DATA_API_URL is required');
+  console.error('NEON_DATA_API_URL not set. Data API calls will fail.');
 }
 
 // Remove DATABASE_URL and pool setup
@@ -103,6 +101,15 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 export function createApp() {
   const app = express();
+
+  // Log important environment variables for debugging
+  console.log('--- Environment Variables ---');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+  console.log('NEON_DATA_API_URL:', process.env.NEON_DATA_API_URL ? 'SET' : 'NOT SET');
+  console.log('NEON_API_KEY:', process.env.NEON_API_KEY ? 'SET' : 'NOT SET');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+  console.log('---------------------------');
 
   // Moved to top-level for direct export: JWT_SECRET, DATABASE_URL, pool
 
@@ -489,7 +496,7 @@ export function createApp() {
     // This part of the code will need to be refactored to use the Data API
     // For now, it will return an error as the Data API is not fully integrated
     // and the pg.Pool is removed.
-    const { where, params } = buildInvestmentWhere(req.query || {});
+      const { where, params } = buildInvestmentWhere(req.query || {});
     // Convert Knex-like params to Data API query parameters
     const queryParams: Record<string, string> = {};
     // Assuming `where` will be a string like 'investment_date >= $1 AND ...'
