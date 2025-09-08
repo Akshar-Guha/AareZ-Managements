@@ -39,6 +39,8 @@ async function neonDataApiRequest(method: 'get' | 'post' | 'put' | 'delete', pat
     };
     let url = `${NEON_DATA_API_URL}${path}`;
 
+    console.log(`[Neon Data API] Calling ${method.toUpperCase()} ${url} with params:`, queryParams, 'data:', data);
+
     let response;
     if (method === 'get') {
       response = await axios.get(url, { headers, params: queryParams });
