@@ -1,7 +1,32 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-// import { Pool } from 'pg'; // Remove pg import
+import promBundle from 'express-prom-bundle';
+import * as promClient from 'prom-client';
+
+// Create a new registry for custom metrics
+const register = new promClient.Registry();
+
+// Define custom metrics
+const httpRequestDurationMicroseconds = new promClient.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'code'],
+  registers: [register]
+});
+
+const activeRequests = new promClient.Gauge({
+  name: 'active_requests',
+  help: 'Number of active requests currently being processed',
+  registers: [register]
+});
+
+const totalRequests = new promClient.Counter({
+  name: 'total_requests',
+  help: 'Total number of requests processed',
+  labelNames: ['method', 'route', 'code'],
+  registers: [register]
+});
 
 export function createApp() {
   console.log('Starting createApp() function');
@@ -16,6 +41,39 @@ export function createApp() {
   // Comprehensive error handling
   try {
     const app = express();
+
+    // Prometheus middleware for default metrics
+    app.use(promBundle({
+      includeMethod: true,
+      includePath: true,
+      promClient: promClient,
+      metricsPath: '/metrics',
+      promRegistry: register
+    }));
+
+    // Middleware to track active requests
+    app.use((req, res, next) => {
+      activeRequests.inc();
+      const end = httpRequestDurationMicroseconds.startTimer();
+      
+      res.on('finish', () => {
+        end({ 
+          method: req.method, 
+          route: req.path, 
+          code: res.statusCode 
+        });
+        
+        totalRequests.inc({
+          method: req.method, 
+          route: req.path, 
+          code: res.statusCode
+        });
+        
+        activeRequests.dec();
+      });
+      
+      next();
+    });
 
     // Detailed CORS configuration
     console.log('Configuring CORS middleware...');
@@ -45,6 +103,12 @@ export function createApp() {
     // Diagnostic routes
     console.log('Adding diagnostic routes...');
     
+    // Prometheus metrics endpoint
+    app.get('/metrics', async (req, res) => {
+      res.set('Content-Type', register.contentType);
+      res.end(await register.metrics());
+    });
+
     // Environment info route
     app.get('/api/env', (req, res) => {
       res.json({
@@ -62,7 +126,9 @@ export function createApp() {
         ok: true, 
         timestamp: new Date().toISOString(),
         nodeVersion: process.version,
-        environment: process.env.NODE_ENV
+        environment: process.env.NODE_ENV,
+        activeRequests: activeRequests.get(),
+        totalRequests: totalRequests.get()
       });
     });
 
