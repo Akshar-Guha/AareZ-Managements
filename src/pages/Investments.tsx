@@ -246,12 +246,6 @@ function InvestmentModal({ open, onClose, onSaved, loading, setLoading, investme
             disabled={readOnly}
             error={!!errors.preferences}
           />
-          {console.log('Button disabled check:', { 
-            readOnly, 
-            prefInput, 
-            productExistsInDropdownOptions: products.some(p => p.name === prefInput.trim()), 
-            isAlreadyAddedToForm: form.preferences.some(p => p === prefInput.trim())
-          })} {/* Log button disable conditions */}
           <Button
             type="button"
             onClick={addPref}
