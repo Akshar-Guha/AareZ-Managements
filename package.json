@@ -16,9 +16,12 @@
     "migrate:rollback": "npm run knex migrate:rollback",
     "monitor:up": "docker-compose up -d prometheus grafana",
     "monitor:down": "docker-compose down",
-    "monitor:logs": "docker-compose logs -f prometheus grafana"
+    "monitor:logs": "docker-compose logs -f prometheus grafana",
+    "axiom:login": "npx @axiomhq/axiom login",
+    "axiom:push": "npx @axiomhq/axiom push"
   },
   "dependencies": {
+    "@axiomhq/axiom-node": "^0.12.0",
     "@heroicons/react": "^2.2.0",
     "@neondatabase/serverless": "^0.9.5",
     "axios": "^1.11.0",

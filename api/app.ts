@@ -3,6 +3,13 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
+import { Axiom } from '@axiomhq/axiom-node';
+
+// Initialize Axiom client
+const axiom = new Axiom({
+  token: process.env.AXIOM_TOKEN || '',
+  orgId: process.env.AXIOM_ORG_ID || ''
+});
 
 // Create a new registry for custom metrics
 const register = new promClient.Registry();
@@ -42,21 +49,38 @@ export function createApp() {
   try {
     const app = express();
 
-    // Prometheus middleware for default metrics
-    app.use(promBundle({
-      includeMethod: true,
-      includePath: true,
-      promClient: promClient,
-      metricsPath: '/metrics',
-      promRegistry: register
-    }));
-
-    // Middleware to track active requests
+    // Middleware to log requests with Axiom
     app.use((req, res, next) => {
+      const startTime = Date.now();
+      
+      // Log request details to Axiom
+      axiom.ingest('vercel-requests', {
+        method: req.method,
+        path: req.path,
+        timestamp: new Date().toISOString(),
+        headers: {
+          userAgent: req.get('User-Agent'),
+          host: req.get('Host')
+        }
+      }).catch(console.error);
+
+      // Track active requests and timing
       activeRequests.inc();
       const end = httpRequestDurationMicroseconds.startTimer();
       
+      // Capture response details
       res.on('finish', () => {
+        const duration = Date.now() - startTime;
+        
+        // Log response details to Axiom
+        axiom.ingest('vercel-responses', {
+          method: req.method,
+          path: req.path,
+          statusCode: res.statusCode,
+          duration: duration,
+          timestamp: new Date().toISOString()
+        }).catch(console.error);
+
         end({ 
           method: req.method, 
           route: req.path, 
@@ -74,6 +98,15 @@ export function createApp() {
       
       next();
     });
+
+    // Prometheus middleware for default metrics
+    app.use(promBundle({
+      includeMethod: true,
+      includePath: true,
+      promClient: promClient,
+      metricsPath: '/metrics',
+      promRegistry: register
+    }));
 
     // Detailed CORS configuration
     console.log('Configuring CORS middleware...');
@@ -109,6 +142,26 @@ export function createApp() {
       res.end(await register.metrics());
     });
 
+    // Axiom diagnostic route
+    app.get('/api/diagnostics', async (req, res) => {
+      try {
+        const diagnostics = {
+          activeRequests: activeRequests.get(),
+          totalRequests: totalRequests.get(),
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV
+        };
+        
+        // Log diagnostics to Axiom
+        await axiom.ingest('vercel-diagnostics', diagnostics);
+        
+        res.json(diagnostics);
+      } catch (error) {
+        console.error('Diagnostics error:', error);
+        res.status(500).json({ error: 'Failed to retrieve diagnostics' });
+      }
+    });
+
     // Environment info route
     app.get('/api/env', (req, res) => {
       res.json({
@@ -122,20 +175,33 @@ export function createApp() {
     // Health check route with comprehensive info
     app.get('/api/health', (req, res) => {
       console.log('Health endpoint hit');
-      res.json({ 
+      const healthInfo = { 
         ok: true, 
         timestamp: new Date().toISOString(),
         nodeVersion: process.version,
         environment: process.env.NODE_ENV,
         activeRequests: activeRequests.get(),
         totalRequests: totalRequests.get()
-      });
+      };
+      
+      // Log health check to Axiom
+      axiom.ingest('vercel-health-checks', healthInfo).catch(console.error);
+      
+      res.json(healthInfo);
     });
 
     console.log('All routes configured successfully');
     return app;
   } catch (error) {
     console.error('CRITICAL: Error in createApp():', error);
+    
+    // Log critical error to Axiom
+    axiom.ingest('vercel-errors', {
+      type: 'createApp',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    }).catch(console.error);
+    
     throw error;
   }
 }
