@@ -83,7 +83,7 @@ export function createApp() {
           userAgent: req.get('User-Agent'),
           host: req.get('Host')
         }
-      });
+      }]);
 
       // Track active requests and timing
       activeRequests.inc();
@@ -100,7 +100,7 @@ export function createApp() {
           statusCode: res.statusCode,
           duration: duration,
           timestamp: new Date().toISOString()
-        });
+        }]);
 
         end({ 
           method: req.method, 
