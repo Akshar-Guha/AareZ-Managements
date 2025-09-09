@@ -68,7 +68,7 @@ export function createApp() {
     const app = express();
 
     // Add Stack Auth middleware
-    app.use(stackServerApp.expressMiddleware);
+    app.use(stackServerApp.express());
 
     // Middleware to log requests with Axiom
     app.use((req, res, next) => {
