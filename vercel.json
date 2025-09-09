@@ -1,4 +1,8 @@
-{
+Still the app is not live! 
+
+Please fix the issue as only white screen is visible https://aarez-mgnmt.vercel.app/  and nothing works! 
+
+Please simplyfy the project so it can easily run!{
   "version": 2,
   "name": "aarez-mgnmt",
   "builds": [

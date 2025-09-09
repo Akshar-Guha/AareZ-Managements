@@ -1,4 +1,4 @@
-import { useUser } from '@stackframe/react';
+import { useAuth } from '@/stores/useAuthStore';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
@@ -7,8 +7,8 @@ import { StatsCard } from '@/components/StatsCard';
 
 export default function MRDashboard() {
   const navigate = useNavigate();
-  const { user, isLoading } = useUser();
-  console.log('useUser in MRDashboard.tsx:', { user, isLoading });
+  const { user, isLoading } = useAuth();
+  console.log('useAuth in MRDashboard.tsx:', { user, isLoading });
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalRevenue: 0,

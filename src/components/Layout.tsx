@@ -5,12 +5,12 @@ import { Fragment, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '@/constants/nav';
-import { useUser } from '@stackframe/react';
+import { useAuth } from '@/stores/useAuthStore';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const user = useUser();
-  console.log('useUser in Layout.tsx:', user);
+  const { user } = useAuth();
+  console.log('useAuth in Layout.tsx:', user);
 
   return (
     <>

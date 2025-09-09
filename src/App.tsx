@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { SignIn, useUser } from '@stackframe/react';
+import { useAuth } from '@/stores/useAuthStore';
+import SignIn from './pages/SignIn';
 import Layout from './components/Layout';
 import { PrivateRoute } from './components/PrivateRoute';
 import Dashboard from './pages/Dashboard';
@@ -16,8 +17,12 @@ import OCRPage from './pages/OCRPage';
 
 export function App() {
   const navigate = useNavigate();
-  const { user, isLoading } = useUser();
-  console.log('useUser in App.tsx:', { user, isLoading });
+  const { user, isLoading, checkAuth } = useAuth();
+  console.log('useAuth in App.tsx:', { user, isLoading });
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     if (!isLoading && !user) {

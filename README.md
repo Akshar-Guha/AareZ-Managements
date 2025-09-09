@@ -1,59 +1,75 @@
-# Manager App
+# Healthcare Manager Clone
 
-This is a full-stack application built with TypeScript, React, Node.js, and Express.js, featuring a management dashboard with various functionalities.
-
-## Tech Stack
-
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, PostCSS
-- **Backend**: Node.js, Express.js, TypeScript
+This is a clone of a healthcare management application with features for managing investments, products, pharmacies, and more.
 
 ## Features
+- User authentication and authorization
+- Dashboard with stats and recent investments
+- Product management
+- Pharmacy tracking
+- Investment tracking
+- OCR for bills
+- Analytics and logging
 
-### User Authentication
-Handles user login and provides context for authentication status.
-- `src/context/AuthContext.tsx`
-- `src/pages/Login.tsx`
-- `src/components/PrivateRoute.tsx`
+## Tech Stack
+- Frontend: React with Vite, TypeScript, Tailwind CSS, React Router
+- Backend: Express.js with PostgreSQL (Neon)
+- Deployment: Vercel for serverless API and static hosting
+- State Management: Zustand
+- Other: Knex for migrations, JWT for auth
 
-### API Services
-Provides functions for interacting with the backend API.
-- `api/app-neon-backup.ts`
-- `api/app.ts`
-- `api/index.ts`
-- `api-local/server.ts`
-- `src/lib/api.ts`
+## Local Development
 
-### Navigation and Layout
-Defines the application layout and navigation structure.
-- `src/components/Layout.tsx`
-- `src/constants/nav.ts`
+1. Copy `.env.example` to `.env` and fill in the values:
+   ```
+   DATABASE_URL="postgresql://<user>:<password>@<host>/<database>?sslmode=require"
+   JWT_SECRET="replace-with-long-random-secret"
+   MIGRATE_ON_START=true
+   CORS_ORIGIN="http://localhost:5173"
+   ```
 
-### Dashboard & Analytics
-Provides various dashboards for analytics, logging, and other management functionalities.
-- `src/pages/Analytics.tsx`
-- `src/pages/Dashboard.tsx`
-- `src/pages/LoggingDashboard.tsx`
-- `src/pages/MRDashboard.tsx`
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-### Inventory & Products Management
-Manages inventory and product-related functionalities.
-- `src/pages/Inventory.tsx`
-- `src/pages/Products.tsx`
+3. Run migrations (if needed):
+   ```
+   npm run migrate:latest
+   ```
 
-### Investments Management
-Handles investment-related features.
-- `src/pages/Investments.tsx`
+4. Start the development server:
+   ```
+   npm run dev
+   ```
 
-### OCR Page
-Provides functionality related to Optical Character Recognition.
-- `src/pages/OCRPage.tsx`
+The app will be available at http://localhost:5173.
 
-### UI Components
-Reusable UI components used throughout the application.
-- `src/components/Field.tsx`
-- `src/components/KebabMenu.tsx`
-- `src/components/Modal.tsx`
+## Deployment to Vercel
 
-### Logging Context
-Provides a context for logging functionality within the application.
-- `src/context/LogContext.tsx`
+1. Push your code to a Git repository connected to Vercel.
+
+2. In Vercel Project Settings > Environment Variables, add:
+   - `DATABASE_URL`: Your Neon PostgreSQL connection string
+   - `JWT_SECRET`: A long random secret for JWT signing
+   - `MIGRATE_ON_START`: `true` for the first deploy (to auto-create tables), then set to `false`
+
+3. Set `CORS_ORIGIN` to your Vercel domain or `*` for production.
+
+4. Deploy. The backend will auto-migrate on first start, and the frontend will serve as static SPA with API routes handled by serverless functions.
+
+Default credentials for testing:
+- Admin: admin@aarezhealth.com / admin123
+- MR: mr@aarezhealth.com / mr123
+- User: user1@aarezhealth.com / user123
+
+## Monitoring
+- Prometheus and Grafana for metrics (docker-compose up)
+- Axiom for logging (optional, set AXIOM_TOKEN and AXIOM_ORG_ID)
+
+## Scripts
+- `npm run dev`: Start dev server with API and frontend concurrently
+- `npm run build`: Build for production
+- `npm run preview`: Preview production build
+- `npm run lint`: Lint code
+- Migration scripts: `npm run migrate:make`, `npm run migrate:latest`, `npm run migrate:rollback`

@@ -1,9 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useUser } from '@stackframe/react';
+import { useAuth } from '@/stores/useAuthStore';
 
 export function PrivateRoute() {
-  const { user, isLoading } = useUser();
-  console.log('useUser in PrivateRoute.tsx:', { user, isLoading });
+  const { user, isLoading } = useAuth();
+  console.log('useAuth in PrivateRoute.tsx:', { user, isLoading });
 
   if (isLoading) {
     return <div>Loading authentication...</div>;
