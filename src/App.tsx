@@ -1,54 +1,52 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { PrivateRoute } from '@/components/PrivateRoute';
-import Layout from '@/components/Layout';
-import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import Investments from '@/pages/Investments';
-import Analytics from '@/pages/Analytics';
-import Products from '@/pages/Products';
-import OCRPage from '@/pages/OCRPage';
-import Inventory from '@/pages/Inventory';
-import { LogProvider } from '@/context/LogContext';
-import LoggingDashboard from '@/pages/LoggingDashboard';
-import MRDashboard from '@/pages/MRDashboard';
-import Pharmacy from '@/pages/Pharmacy'; // Import the new Pharmacy component
+import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { SignIn, useUser } from '@stackframe/react';
+import { Layout } from './components/Layout';
+import { PrivateRoute } from './components/PrivateRoute';
+import { Dashboard } from './pages/Dashboard';
+import { Inventory } from './pages/Inventory';
+import { Products } from './pages/Products';
+import { Pharmacy } from './pages/Pharmacy';
+import { Investments } from './pages/Investments';
+import { Analytics } from './pages/Analytics';
+import { MRDashboard } from './pages/MRDashboard';
+import { LoggingDashboard } from './pages/LoggingDashboard';
+import { OCRPage } from './pages/OCRPage';
 
+export function App() {
+  const navigate = useNavigate();
+  const { user, isLoading } = useUser();
 
-function AppRoutes() {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="h-screen grid place-items-center">Loading...</div>;
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/sign-in');
+    }
+  }, [user, isLoading, navigate]);
+
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a more elaborate loading spinner
+  }
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route element={<PrivateRoute allowedRoles={['admin']} />}>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="investments" element={<Investments />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="products" element={<Products />} />
-          <Route path="ocr" element={<OCRPage />} />
-          <Route path="inventory" element={<Inventory />} />
-          <Route path="logs" element={<LoggingDashboard />} />
-          <Route path="pharmacies" element={<Pharmacy />} /> {/* Add the new Pharmacy route */}
+    <>
+      <Toaster position="top-center" richColors />
+      <Routes>
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route element={<PrivateRoute />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="products" element={<Products />} />
+            <Route path="pharmacy" element={<Pharmacy />} />
+            <Route path="investments" element={<Investments />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="mrdashboard" element={<MRDashboard />} />
+            <Route path="logging" element={<LoggingDashboard />} />
+            <Route path="ocr" element={<OCRPage />} />
+          </Route>
         </Route>
-      </Route>
-      <Route element={<PrivateRoute allowedRoles={['mr']} />}>
-        <Route path="/mr" element={<MRDashboard />} />
-      </Route>
-      <Route path="*" element={user ? (user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/mr" />) : <Navigate to="/login" />} />
-    </Routes>
-  );
-}
-
-export default function App() {
-  return (
-    <LogProvider>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </LogProvider>
+      </Routes>
+    </>
   );
 }

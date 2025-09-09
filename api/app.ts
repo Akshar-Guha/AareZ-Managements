@@ -3,13 +3,28 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
-import { Axiom } from '@axiomhq/js'; // Changed to @axiomhq/js
+import { Axiom } from '@axiomhq/js';
+import { stackServerApp } from './stack';
 
-// Initialize Axiom client
-const axiom = new Axiom({
-  token: process.env.AXIOM_TOKEN || '',
-  orgId: process.env.AXIOM_ORG_ID || ''
-});
+// Initialize Axiom client only if credentials are provided
+const axiomToken = process.env.AXIOM_TOKEN;
+const axiomOrgId = process.env.AXIOM_ORG_ID;
+
+// Create the client only when both token and orgId are available; otherwise stub out ingest
+const axiomClient = axiomToken && axiomOrgId
+  ? new Axiom({ token: axiomToken, orgId: axiomOrgId })
+  : null;
+
+/**
+ * Safe wrapper around Axiom ingest that only sends data when the client is available.
+ * Logs any ingestion errors to the console so they don’t crash the request lifecycle.
+ */
+function ingest(dataset: string, data: unknown[]) {
+  if (!axiomClient) return;
+  axiomClient.ingest(dataset, data).catch((err) => {
+    console.error('Axiom ingest error:', err);
+  });
+}
 
 // Create a new registry for custom metrics
 const register = new promClient.Registry();
@@ -52,12 +67,15 @@ export function createApp() {
   try {
     const app = express();
 
+    // Add Stack Auth middleware
+    app.use(stackServerApp.expressMiddleware);
+
     // Middleware to log requests with Axiom
     app.use((req, res, next) => {
       const startTime = Date.now();
       
       // Log request details to Axiom
-      axiom.log('vercel-requests', {
+      ingest('vercel-requests', [{
         method: req.method,
         path: req.path,
         timestamp: new Date().toISOString(),
@@ -65,7 +83,7 @@ export function createApp() {
           userAgent: req.get('User-Agent'),
           host: req.get('Host')
         }
-      }).catch(console.error);
+      }]);
 
       // Track active requests and timing
       activeRequests.inc();
@@ -76,13 +94,13 @@ export function createApp() {
         const duration = Date.now() - startTime;
         
         // Log response details to Axiom
-        axiom.log('vercel-responses', {
+        ingest('vercel-responses', [{
           method: req.method,
           path: req.path,
           statusCode: res.statusCode,
           duration: duration,
           timestamp: new Date().toISOString()
-        }).catch(console.error);
+        }]);
 
         end({ 
           method: req.method, 
@@ -156,7 +174,7 @@ export function createApp() {
         };
         
         // Log diagnostics to Axiom
-        await axiom.log('vercel-diagnostics', diagnostics);
+        ingest('vercel-diagnostics', [diagnostics]);
         
         res.json(diagnostics);
       } catch (error) {
@@ -188,7 +206,7 @@ export function createApp() {
       };
       
       // Log health check to Axiom
-      axiom.log('vercel-health-checks', healthInfo).catch(console.error);
+      ingest('vercel-health-checks', [healthInfo]);
       
       res.json(healthInfo);
     });
@@ -199,11 +217,11 @@ export function createApp() {
     console.error('CRITICAL: Error in createApp():', error);
     
     // Log critical error to Axiom
-    axiom.log('vercel-errors', {
+    ingest('vercel-errors', [{
       type: 'createApp',
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString()
-    }).catch(console.error);
+    }]);
     
     throw error;
   }

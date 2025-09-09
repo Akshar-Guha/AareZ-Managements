@@ -2,90 +2,45 @@
   "tech_stack": [
     "TypeScript",
     "React",
-    "Express.js",
-    "PostgreSQL",
-    "Tailwind CSS",
     "Vite",
-    "Zod",
-    "Swagger",
-    "Chart.js",
-    "bcryptjs",
-    "jsonwebtoken"
+    "Tailwind CSS",
+    "Neon PostgreSQL",
+    "Vercel",
+    "Knex.js"
   ],
   "features": [
     {
-      "name": "Error Handling Middleware",
-      "description": "Catches and logs errors consistently, sending a standardized error response from the backend API.",
+      "name": "Authentication",
+      "description": "User login and authentication system",
       "files": [
-        "api/app.ts"
+        "src/context/AuthContext.tsx",
+        "src/pages/Login.tsx"
       ]
     },
     {
-      "name": "Input Validation (Auth Registration)",
-      "description": "Validates user registration input (name, email, password) using Zod, enforcing password policies on the backend.",
+      "name": "Dashboard",
+      "description": "Main dashboard with various analytics and management views",
       "files": [
-        "api/app.ts"
-      ]
-    },
-    {
-      "name": "Password Policies",
-      "description": "Enforces strong password requirements (min length, uppercase, lowercase, number, special character) for user registration.",
-      "files": [
-        "api/app.ts"
-      ]
-    },
-    {
-      "name": "API Documentation (Swagger)",
-      "description": "Provides interactive API documentation for backend endpoints using Swagger UI and JSDoc annotations.",
-      "files": [
-        "api/app.ts"
-      ]
-    },
-    {
-      "name": "InvestmentCard Component",
-      "description": "A reusable React component to display individual investment details and actions (view, edit, delete).",
-      "files": [
-        "src/components/InvestmentCard.tsx",
+        "src/pages/Dashboard.tsx",
+        "src/pages/Analytics.tsx",
+        "src/pages/Inventory.tsx",
         "src/pages/Investments.tsx"
       ]
     },
     {
-      "name": "ConfirmationModal Component",
-      "description": "A reusable React component for confirming user actions, specifically implemented for investment deletion.",
+      "name": "Pharmacy Management",
+      "description": "Pharmacy-related operations and management",
       "files": [
-        "src/components/ConfirmationModal.tsx",
-        "src/pages/Investments.tsx"
+        "src/pages/Pharmacy.tsx",
+        "src/components/PharmacyModal.tsx"
       ]
     },
     {
-      "name": "StatsCard Component",
-      "description": "A reusable React component to display key statistics in a card format within the analytics dashboard.",
+      "name": "Product Management",
+      "description": "Product-related operations and management",
       "files": [
-        "src/components/StatsCard.tsx",
-        "src/pages/Analytics.tsx"
-      ]
-    },
-    {
-      "name": "FilterPanel Component",
-      "description": "A reusable React component for filtering data based on various criteria (date ranges, doctors, months, years).",
-      "files": [
-        "src/components/FilterPanel.tsx",
-        "src/pages/Analytics.tsx"
-      ]
-    },
-    {
-      "name": "ChartWrapper Component",
-      "description": "A reusable React component to encapsulate Chart.js initialization and rendering logic, used for various charts.",
-      "files": [
-        "src/components/ChartWrapper.tsx",
-        "src/pages/Analytics.tsx"
-      ]
-    },
-    {
-      "name": "Role-Based Access Control (RBAC)",
-      "description": "Middleware to restrict access to certain backend API endpoints based on authenticated user roles (e.g., only 'admin' can delete investments).",
-      "files": [
-        "api/app.ts"
+        "src/pages/Products.tsx",
+        "src/components/ProductModal.tsx"
       ]
     }
   ]

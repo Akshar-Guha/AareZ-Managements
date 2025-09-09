@@ -1,40 +1,18 @@
-import serverless from 'serverless-http';
-import { createApp } from './app.js';
-import { Request, Response } from 'express'; // Import Request and Response types
+import { createApp } from './app';
+import type { Request, Response } from 'express';
 
-let serverlessHandler;
+// Initialize app once per runtime instance
+let appInstance: ReturnType<typeof createApp> | null = null;
 
-console.log('Starting serverless function initialization');
-
-try {
-  console.log('Attempting to create Express app');
-  const app = createApp();
-  
-  console.log('Wrapping app with serverless');
-  serverlessHandler = serverless(app, {
-    binary: ['*/*'], // Support binary responses
-    // Add more configuration if needed
-  });
-  
-  console.log('Serverless handler created successfully');
-} catch (error: unknown) {
-  console.error('CRITICAL: Serverless function initialization failed', error);
-  
-  serverlessHandler = (req: Request, res: Response) => {
-    console.error('Fallback error handler called');
-    res.status(500).json({ 
-      error: 'Server initialization failed', 
-      details: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
-    });
-  };
+function getApp() {
+  if (!appInstance) {
+    console.log('Initializing Express app for Vercel function');
+    appInstance = createApp();
+  }
+  return appInstance;
 }
 
-// Diagnostic route to help troubleshoot
-if (serverlessHandler && typeof serverlessHandler === 'function') {
-  console.log('Serverless handler is a valid function');
-} else {
-  console.error('Serverless handler is NOT a valid function');
+export default function handler(req: Request, res: Response) {
+  const app = getApp();
+  return (app as unknown as (req: Request, res: Response) => void)(req, res);
 }
-
-export default serverlessHandler;
