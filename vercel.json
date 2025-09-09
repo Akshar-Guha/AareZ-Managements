@@ -3,7 +3,7 @@
   "name": "aarez-mgnmt",
   "builds": [
     {
-      "src": "api/**/*.ts",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     },
     {

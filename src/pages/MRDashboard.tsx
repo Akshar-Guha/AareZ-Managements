@@ -2,13 +2,13 @@ import { useUser } from '@stackframe/react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
-import { Investment, Pharmacy, Product } from '@/types/enums';
-import InvestmentCard from '@/components/InvestmentCard';
-import StatsCard from '@/components/StatsCard';
+import { InvestmentCard } from '@/components/InvestmentCard';
+import { StatsCard } from '@/components/StatsCard';
 
 export default function MRDashboard() {
   const navigate = useNavigate();
   const { user, isLoading } = useUser();
+  console.log('useUser in MRDashboard.tsx:', { user, isLoading });
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalRevenue: 0,
@@ -37,10 +37,10 @@ export default function MRDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const revenueRes = await api.get('/dashboard/revenue');
-      const investmentsRes = await api.get('/dashboard/investments');
-      const productsRes = await api.get('/dashboard/products');
-      const pharmaciesRes = await api.get('/dashboard/pharmacies');
+      const revenueRes = await api.get<any>('/dashboard/revenue');
+      const investmentsRes = await api.get<any>('/dashboard/investments');
+      const productsRes = await api.get<any>('/dashboard/products');
+      const pharmaciesRes = await api.get<any>('/dashboard/pharmacies');
 
       setDashboardData({
         totalRevenue: revenueRes.data.totalRevenue,
@@ -83,7 +83,7 @@ export default function MRDashboard() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Investments</h2>
           {dashboardData.recentInvestments.length > 0 ? (
             <div className="space-y-4">
-              {dashboardData.recentInvestments.map((investment: Investment) => (
+              {dashboardData.recentInvestments.map((investment: any) => (
                 <InvestmentCard key={investment.id} investment={investment} />
               ))}
             </div>
@@ -95,7 +95,7 @@ export default function MRDashboard() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Top Selling Products</h2>
           {dashboardData.topSellingProducts.length > 0 ? (
             <ul className="divide-y divide-gray-200">
-              {dashboardData.topSellingProducts.map((product: Product) => (
+              {dashboardData.topSellingProducts.map((product: any) => (
                 <li key={product.id} className="py-3 flex justify-between items-center">
                   <span className="text-gray-900 font-medium">{product.name}</span>
                   <span className="text-gray-600">{product.sales} sales</span>
@@ -112,7 +112,7 @@ export default function MRDashboard() {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">New Pharmacies</h2>
         {dashboardData.newPharmacies.length > 0 ? (
           <ul className="divide-y divide-gray-200">
-            {dashboardData.newPharmacies.map((pharmacy: Pharmacy) => (
+            {dashboardData.newPharmacies.map((pharmacy: any) => (
               <li key={pharmacy.id} className="py-3 flex justify-between items-center">
                 <span className="text-gray-900 font-medium">{pharmacy.name}</span>
                 <span className="text-gray-600">{pharmacy.location}</span>

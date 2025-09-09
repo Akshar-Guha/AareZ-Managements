@@ -4,12 +4,13 @@ import clsx from 'clsx';
 import { Fragment, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { navigation } from '@/constants/nav';
+import { NAV_ITEMS } from '@/constants/nav';
 import { useUser } from '@stackframe/react';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, signOut } = useUser();
+  const user = useUser();
+  console.log('useUser in Layout.tsx:', user);
 
   return (
     <>
@@ -34,10 +35,10 @@ export default function Layout() {
                     </button>
                   </div>
                   <div className="mt-5 flex flex-col">
-                    {navigation.map((item) => (
+                    {NAV_ITEMS.map((item) => (
                       <NavLink
-                        key={item.name}
-                        to={item.href}
+                        key={item.label}
+                        to={item.path}
                         className={({ isActive }) =>
                           clsx(
                             'group flex items-center px-2 py-2 text-base font-medium rounded-md',
@@ -51,7 +52,7 @@ export default function Layout() {
                           className="mr-4 h-6 w-6 flex-shrink-0 text-gray-400"
                           aria-hidden="true"
                         />
-                        {item.name}
+                        {item.label}
                       </NavLink>
                     ))}
                   </div>
@@ -73,10 +74,10 @@ export default function Layout() {
             </div>
             <div className="mt-5 flex-1 flex flex-col">
               <nav className="flex-1 px-2 pb-4 space-y-1">
-                {navigation.map((item) => (
+                {NAV_ITEMS.map((item: { label: string; path: string; icon: any }) => (
                   <NavLink
-                    key={item.name}
-                    to={item.href}
+                    key={item.label}
+                    to={item.path}
                     className={({ isActive }) =>
                       clsx(
                         'group flex items-center px-2 py-2 text-sm font-medium rounded-md',
@@ -90,7 +91,7 @@ export default function Layout() {
                       className="mr-3 h-6 w-6 flex-shrink-0 text-gray-400"
                       aria-hidden="true"
                     />
-                    {item.name}
+                    {item.label}
                   </NavLink>
                 ))}
               </nav>

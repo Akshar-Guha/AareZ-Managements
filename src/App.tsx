@@ -17,6 +17,7 @@ import OCRPage from './pages/OCRPage';
 export function App() {
   const navigate = useNavigate();
   const { user, isLoading } = useUser();
+  console.log('useUser in App.tsx:', { user, isLoading });
 
   useEffect(() => {
     if (!isLoading && !user) {

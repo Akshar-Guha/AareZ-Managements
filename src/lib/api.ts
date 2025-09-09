@@ -107,3 +107,5 @@ export const API = {
     }
   },
 };
+
+export default API;

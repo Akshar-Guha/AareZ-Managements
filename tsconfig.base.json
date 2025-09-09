@@ -15,6 +15,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
+    "types": ["vite/client"],
     "paths": {
       "@/components/*": ["src/components/*"],
       "@/pages/*": ["src/pages/*"],
