@@ -16,5 +16,4 @@
     { "src": "/api/(.*)", "dest": "/api/index" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
-  // This comment is added to force a Vercel re-read of vercel.json
 }
