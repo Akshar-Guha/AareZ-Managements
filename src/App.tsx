@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { SignIn, useUser } from '@stackframe/react';
-import { Layout } from './components/Layout';
+import Layout from './components/Layout';
 import { PrivateRoute } from './components/PrivateRoute';
-import { Dashboard } from './pages/Dashboard';
-import { Inventory } from './pages/Inventory';
-import { Products } from './pages/Products';
-import { Pharmacy } from './pages/Pharmacy';
-import { Investments } from './pages/Investments';
-import { Analytics } from './pages/Analytics';
-import { MRDashboard } from './pages/MRDashboard';
-import { LoggingDashboard } from './pages/LoggingDashboard';
-import { OCRPage } from './pages/OCRPage';
+import Dashboard from './pages/Dashboard';
+import Inventory from './pages/Inventory';
+import Products from './pages/Products';
+import Pharmacy from './pages/Pharmacy';
+import Investments from './pages/Investments';
+import Analytics from './pages/Analytics';
+import MRDashboard from './pages/MRDashboard';
+import LoggingDashboard from './pages/LoggingDashboard';
+import OCRPage from './pages/OCRPage';
 
 export function App() {
   const navigate = useNavigate();

@@ -19,9 +19,9 @@ const axiomClient = axiomToken && axiomOrgId
  * Safe wrapper around Axiom ingest that only sends data when the client is available.
  * Logs any ingestion errors to the console so they don’t crash the request lifecycle.
  */
-function ingest(dataset: string, data: unknown[]) {
-  if (!axiomClient) return;
-  axiomClient.ingest(dataset, data).catch((err) => {
+function ingest(dataset: string, data: unknown[]): Promise<void> {
+  if (!axiomClient) return Promise.resolve();
+  return axiomClient.ingest(dataset, data).catch((err: any) => {
     console.error('Axiom ingest error:', err);
   });
 }
@@ -83,7 +83,7 @@ export function createApp() {
           userAgent: req.get('User-Agent'),
           host: req.get('Host')
         }
-      }]);
+      });
 
       // Track active requests and timing
       activeRequests.inc();
@@ -100,7 +100,7 @@ export function createApp() {
           statusCode: res.statusCode,
           duration: duration,
           timestamp: new Date().toISOString()
-        }]);
+        });
 
         end({ 
           method: req.method, 
