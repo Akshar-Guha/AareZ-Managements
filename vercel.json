@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm ci && npm run build",
+  "buildCommand": "node -v && npm install && npm run build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
