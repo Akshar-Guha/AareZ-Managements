@@ -1,8 +1,21 @@
+// API base URL - use environment-specific URLs
+const getApiBaseUrl = () => {
+  // Check if we're running in a Vercel production environment
+  if (window.location.hostname.includes('vercel.app')) {
+    return '';  // Use relative URL for same-origin requests on Vercel
+  }
+  
+  // Local development
+  return '';  // Also use relative paths for local
+};
+
 export const API = {
   async get<T>(path: string): Promise<T> {
     try {
-      console.log(`Fetching GET /api${path}`);
-      const res = await fetch(`/api${path}`, { 
+      const baseUrl = getApiBaseUrl();
+      console.log(`Fetching GET ${baseUrl}/api${path}`);
+      
+      const res = await fetch(`${baseUrl}/api${path}`, {
         credentials: 'include',
         headers: {
           'Accept': 'application/json',
@@ -27,8 +40,9 @@ export const API = {
   
   async post<T>(path: string, body?: any): Promise<T> {
     try {
-      console.log(`Posting to /api${path}`, body);
-      const res = await fetch(`/api${path}`, { 
+      const baseUrl = getApiBaseUrl();
+      console.log(`Posting to ${baseUrl}/api${path}`, body);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'POST', 
         credentials: 'include', 
         headers: { 
@@ -55,8 +69,9 @@ export const API = {
   
   async put<T>(path: string, body?: any): Promise<T> {
     try {
-      console.log(`Putting to /api${path}`, body);
-      const res = await fetch(`/api${path}`, { 
+      const baseUrl = getApiBaseUrl();
+      console.log(`Putting to ${baseUrl}/api${path}`, body);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'PUT', 
         credentials: 'include', 
         headers: { 
@@ -83,8 +98,9 @@ export const API = {
   
   async del<T>(path: string): Promise<T> {
     try {
-      console.log(`Deleting /api${path}`);
-      const res = await fetch(`/api${path}`, { 
+      const baseUrl = getApiBaseUrl();
+      console.log(`Deleting ${baseUrl}/api${path}`);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'DELETE', 
         credentials: 'include',
         headers: {

@@ -137,16 +137,50 @@ export function createApp() {
       promRegistry: register
     }));
 
-    // Detailed CORS configuration
+    // Detailed CORS configuration for production and development
     console.log('Configuring CORS middleware...');
+    
+    // Get origin from env or use a set of allowed origins
+    const allowedOrigins = [
+      process.env.CORS_ORIGIN || 'http://localhost:5173',
+      'https://aarez-mgnmt.vercel.app',
+      /\.vercel\.app$/
+    ];
+    
     const corsOptions = {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+        // Allow requests with no origin (like mobile apps, curl, Postman)
+        if (!origin) {
+          console.log('Allowing request with no origin');
+          return callback(null, true);
+        }
+        
+        // Check if the origin is allowed
+        const allowed = allowedOrigins.some(allowedOrigin => {
+          if (typeof allowedOrigin === 'string') {
+            return allowedOrigin === origin;
+          } else if (allowedOrigin instanceof RegExp) {
+            return allowedOrigin.test(origin);
+          }
+          return false;
+        });
+        
+        if (allowed) {
+          console.log(`Allowing request from origin: ${origin}`);
+          return callback(null, true);
+        } else {
+          console.log(`Blocking request from origin: ${origin}`);
+          return callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization']
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      maxAge: 86400 // 24 hours in seconds
     };
+    
     app.use(cors(corsOptions));
-    console.log('CORS middleware configured with options:', corsOptions);
+    console.log('CORS middleware configured for Vercel deployment');
 
     // JSON parsing middleware
     console.log('Configuring JSON middleware...');
@@ -337,13 +371,27 @@ export function createApp() {
 
     function setAuthCookie(res: any, token: string) {
       const isProd = process.env.NODE_ENV === 'production';
-      res.cookie('token', token, {
+      const hostname = res.req?.headers?.host || '';
+      const isVercel = hostname.includes('vercel.app');
+      
+      console.log('Setting auth cookie with details:', {
+        isProd,
+        hostname,
+        isVercel
+      });
+      
+      // Cookie settings
+      const cookieOptions = {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'lax' : 'lax',
+        sameSite: isProd ? 'none' : 'lax', // 'none' allows cookies in cross-site requests with secure flag
         path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      };
+      
+      // Set cookie and log details
+      res.cookie('token', token, cookieOptions);
+      console.log(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`);
     }
 
     function requireAuth(req: any, res: any, next: any) {
