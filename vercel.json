@@ -1,6 +1,9 @@
 {
   "buildCommand": "npm ci && npm run build",
   "outputDirectory": "dist",
+  "engines": {
+    "node": "18.x"
+  },
   "functions": {
     "api/index.ts": {
       "runtime": "@vercel/node@3.0.0",
