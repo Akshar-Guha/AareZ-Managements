@@ -1,10 +1,11 @@
 {
-  "buildCommand": "node -v && npm install && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
       "runtime": "@vercel/node@3.0.0",
-      "maxDuration": 10
+      "maxDuration": 10,
+      "node": "22.x"
     }
   },
   "routes": [
