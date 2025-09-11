@@ -22,22 +22,13 @@ function safeParseInt(value: unknown, defaultValue = 0): number {
   return defaultValue;
 }
 
-/**
- * Safe logging function with multiple fallback mechanisms
- */
+// Modify the ingest function to use Logger
 function ingest(dataset: string, data: unknown[]): void {
   // Always log to console for local debugging
   Logger.info(`Logging to dataset: ${dataset}`, { data });
 }
 
-/**
- * Log user activity with detailed context
- * @param userId - ID of the user performing the action
- * @param action - Type of action performed
- * @param entityType - Type of entity affected (e.g., 'doctor', 'investment')
- * @param entityId - ID of the affected entity
- * @param details - Additional context about the action
- */
+// Modify logUserActivity to use Logger
 async function logUserActivity(
   userId: number | null, 
   action: string, 
@@ -67,12 +58,7 @@ async function logUserActivity(
   }
 }
 
-/**
- * Enhanced error logging with more context and traceability
- * @param error - The error object
- * @param context - Additional context about where the error occurred
- * @param userId - Optional user ID associated with the error
- */
+// Modify logEnhancedError to use Logger
 function logEnhancedError(
   error: Error, 
   context: { 
@@ -95,7 +81,7 @@ function logEnhancedError(
   Logger.error('Enhanced Error Log', errorLog);
 }
 
-// Add a new performance logging function
+// Modify logPerformanceMetric to use Logger
 function logPerformanceMetric(metricName: string, duration: number, additionalContext: Record<string, any> = {}) {
   const performanceLog = {
     metricName,
@@ -108,7 +94,7 @@ function logPerformanceMetric(metricName: string, duration: number, additionalCo
   Logger.debug('Performance Metric', performanceLog);
 }
 
-// Modify existing trackQueryPerformance to use new logging
+// Modify trackQueryPerformance to use new logging
 function trackQueryPerformance<T>(
   queryName: string, 
   queryFn: () => Promise<T>
@@ -128,7 +114,7 @@ function trackQueryPerformance<T>(
 
       return result;
     })
-    .catch((error) => {
+    .catch((error: unknown) => {
       const duration = Date.now() - startTime;
       
       // Log performance for failed queries with error details
@@ -160,8 +146,8 @@ function getPool() {
       connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
     });
 
-    pool.on('error', (err) => {
-      console.error('Unexpected error on idle client', err);
+    pool.on('error', (err: Error) => {
+      Logger.error('Unexpected error on idle client', { error: err });
     });
   }
   return pool;
@@ -194,9 +180,6 @@ const totalRequests = new promClient.Counter({
   registers: [register]
 });
 
-// Type assertion for result variables
-const assertResult = <T>(result: unknown): T => result as T;
-
 // Global error and unhandled rejection handlers
 process.on('uncaughtException', (error: Error) => {
   Logger.error('Uncaught Exception', {
@@ -228,12 +211,12 @@ export function createApp() {
   try {
     const app = express();
 
-    // Middleware to log requests with Axiom
+    // Middleware to log requests
     app.use((req, res, next) => {
       const startTime = Date.now();
       
       // Log request details to console
-      console.log(`Request: ${req.method} ${req.path}`, {
+      Logger.info(`Request: ${req.method} ${req.path}`, {
         timestamp: new Date().toISOString(),
         headers: {
           userAgent: req.get('User-Agent'),
@@ -250,7 +233,7 @@ export function createApp() {
         const duration = Date.now() - startTime;
         
         // Log response details to console
-        console.log(`Response: ${req.method} ${req.path} - Status: ${res.statusCode} - Duration: ${duration}ms`, {
+        Logger.info(`Response: ${req.method} ${req.path} - Status: ${res.statusCode} - Duration: ${duration}ms`, {
           timestamp: new Date().toISOString()
         });
 
@@ -276,7 +259,6 @@ export function createApp() {
     app.use(promBundle({
       includeMethod: true,
       includePath: true,
-      // Removed promClient: promClient as it conflicts with global collectDefaultMetrics
       metricsPath: '/metrics',
       promRegistry: register
     }));
@@ -295,7 +277,7 @@ export function createApp() {
       origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
         // Allow requests with no origin (like mobile apps, curl, Postman)
         if (!origin) {
-          console.log('Allowing request with no origin');
+          Logger.info('Allowing request with no origin');
           return callback(null, true);
         }
         
@@ -310,10 +292,10 @@ export function createApp() {
         });
         
         if (allowed) {
-          console.log(`Allowing request from origin: ${origin}`);
+          Logger.info(`Allowing request from origin: ${origin}`);
           return callback(null, true);
         } else {
-          console.log(`Blocking request from origin: ${origin}`);
+          Logger.warn(`Blocking request from origin: ${origin}`);
           return callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
       },
@@ -488,18 +470,10 @@ export function createApp() {
           await currentPool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', ['MR User', 'mr@aarezhealth.com', password_hash, 'mr']);
           console.log('Default MR user created: mr@aarezhealth.com / mr123');
         }
-      } catch (err) {
-        console.error('Schema creation error in ensureSchema:', err);
-        // Log to Axiom
-        ingest('vercel-errors', [{ type: 'ensureSchema', error: String(err), timestamp: new Date().toISOString() }]);
+      } catch (err: unknown) { // Explicitly type err as unknown
+        Logger.error('Schema creation error in ensureSchema', { error: String(err) });
       }
     }
-
-    // Run ensureSchema if enabled - This will be handled in api/index.ts for Vercel
-    // and api-local/server.ts for local development
-    // if (process.env.MIGRATE_ON_START !== 'false') {
-    //   ensureSchema().catch(err => console.error('Auto-migration error', err));
-    // }
 
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -513,7 +487,7 @@ export function createApp() {
       const hostname = res.req?.headers?.host || '';
       const isVercel = hostname.includes('vercel.app');
       
-      console.log('Setting auth cookie with details:', {
+      Logger.info('Setting auth cookie with details', {
         isProd,
         hostname,
         isVercel
@@ -530,7 +504,7 @@ export function createApp() {
       
       // Set cookie and log details
       res.cookie('token', token, cookieOptions);
-      console.log(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`);
+      Logger.info(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`);
     }
 
     function requireAuth(req: any, res: any, next: any) {
@@ -539,7 +513,8 @@ export function createApp() {
       try {
         req.user = jwt.verify(token, JWT_SECRET);
         next();
-      } catch {
+      } catch (e: unknown) {
+        Logger.error('Authentication failed', { error: String(e) });
         res.status(401).json({ error: 'Unauthorized' });
       }
     }
@@ -553,7 +528,7 @@ export function createApp() {
       res.end(await register.metrics());
     });
 
-    // Axiom diagnostic route
+    // Diagnostic route
     app.get('/api/diagnostics', async (req, res) => {
       try {
         const diagnostics = {
@@ -564,11 +539,11 @@ export function createApp() {
         };
         
         // Log diagnostics to console
-        console.log('Vercel Diagnostics:', diagnostics);
+        Logger.info('Vercel Diagnostics', diagnostics);
         
         res.json(diagnostics);
-      } catch (error) {
-        console.error('Diagnostics error:', error);
+      } catch (error: unknown) {
+        Logger.error('Diagnostics error', { error: String(error) });
         res.status(500).json({ error: 'Failed to retrieve diagnostics' });
       }
     });
@@ -585,7 +560,7 @@ export function createApp() {
 
     // Health check route with comprehensive info
     app.get('/api/health', async (req, res) => {
-      console.log('Health endpoint hit');
+      Logger.info('Health endpoint hit');
       try {
         const currentPool = getPool(); // Use the singleton pool
         // Test DB connection for health
@@ -601,24 +576,24 @@ export function createApp() {
         };
         
         // Log health check to console
-        console.log('Vercel Health Check:', healthInfo);
+        Logger.info('Vercel Health Check', healthInfo);
         
         res.json(healthInfo);
-      } catch (err) {
-        console.error('Health check DB error:', err);
+      } catch (err: unknown) {
+        Logger.error('Health check DB error', { error: String(err) });
         res.status(500).json({ ok: false, error: 'DB connection failed' });
       }
     });
 
     // Add new migration endpoint
     app.get('/api/migrate', async (req, res) => {
-      console.log('Migration endpoint hit');
+      Logger.info('Migration endpoint hit');
       try {
         await ensureSchema();
         res.json({ success: true, message: 'Schema migrated successfully' });
-      } catch (error: any) {
-        console.error('Migration failed:', error);
-        res.status(500).json({ success: false, error: error.message });
+      } catch (error: unknown) {
+        Logger.error('Migration failed', { error: String(error) });
+        res.status(500).json({ success: false, error: String(error) });
       }
     });
 
@@ -632,13 +607,12 @@ export function createApp() {
         if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
         const password_hash = await bcrypt.hash(password, 10);
         const result = await getPool().query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role', [name, email, password_hash, 'user']);
-        const user = result.rows[0];
+        const user = assertResult<any>(result.rows[0]); // Use assertResult here
         setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
         res.json(user);
-      } catch (e: any) {
-        if (String(e?.message || '').includes('duplicate key')) return res.status(409).json({ error: 'Email exists' });
-        console.error('Register error:', e);
-        ingest('vercel-errors', [{ type: 'auth-register', error: String(e), timestamp: new Date().toISOString() }]);
+      } catch (e: unknown) {
+        if (String(e).includes('duplicate key')) return res.status(409).json({ error: 'Email exists' });
+        Logger.error('Register error', { error: String(e) });
         res.status(500).json({ error: 'Registration failed' });
       }
     });
@@ -648,7 +622,7 @@ export function createApp() {
         const { email, password } = req.body;
         
         // Log incoming login attempt
-        console.log('Login attempt:', { email });
+        Logger.info('Login attempt', { email });
         
         // Detailed database query logging
         try {
@@ -656,10 +630,10 @@ export function createApp() {
             getPool().query('SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1', [email])
           );
           
-          const user = result.rows[0];
+          const user = assertResult<any>(result.rows[0]); // Use assertResult here
           
           // Log user lookup result
-          console.log('User lookup result:', { 
+          Logger.info('User lookup result', { 
             userFound: !!user, 
             email 
           });
@@ -678,7 +652,7 @@ export function createApp() {
           const ok = await bcrypt.compare(password, user.password_hash);
           
           // Log password comparison result
-          console.log('Password comparison result:', { 
+          Logger.info('Password comparison result', { 
             passwordMatch: ok, 
             email 
           });
@@ -708,11 +682,11 @@ export function createApp() {
           
           const { password_hash, ...safe } = user;
           res.json(safe);
-        } catch (queryError) {
+        } catch (queryError: unknown) { // Explicitly type queryError as unknown
           // Log database query error
-          console.error('Login database query error:', queryError);
+          Logger.error('Login database query error', { error: String(queryError) });
           
-          logEnhancedError(queryError, {
+          logEnhancedError(new Error(String(queryError)), {
             route: '/api/auth/login',
             method: 'POST',
             input: { email }
@@ -720,11 +694,11 @@ export function createApp() {
           
           res.status(500).json({ error: 'Database error during login' });
         }
-      } catch (e) {
+      } catch (e: unknown) { // Explicitly type e as unknown
         // Catch-all error logging
-        console.error('Unexpected login error:', e);
+        Logger.error('Unexpected login error', { error: String(e) });
         
-        logEnhancedError(e, {
+        logEnhancedError(new Error(String(e)), {
           route: '/api/auth/login',
           method: 'POST',
           input: { email: req.body.email }
@@ -739,8 +713,8 @@ export function createApp() {
         const { id } = req.user;
         const result = await getPool().query('SELECT id, name, email, role FROM users WHERE id = $1', [id]);
         res.json(result.rows[0] || null);
-      } catch (e) {
-        console.error('Me error:', e);
+      } catch (e: unknown) {
+        Logger.error('Me error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch user' });
       }
     });
@@ -755,8 +729,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM doctors ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Doctors get error:', e);
+      } catch (e: unknown) {
+        Logger.error('Doctors get error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch doctors' });
       }
     });
@@ -773,24 +747,24 @@ export function createApp() {
           req.user.id, 
           'create', 
           'doctor', 
-          result.rows[0].id, 
+          assertResult<any>(result.rows[0]).id, // Use assertResult here
           { code, name, specialty }
         );
         
-        res.json(result.rows[0]);
-      } catch (e: any) {
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
         // Use enhanced error logging
         const code = req.body.code || '';
         const name = req.body.name || '';
         const specialty = req.body.specialty || '';
         
-        logEnhancedError(e, {
+        logEnhancedError(new Error(String(e)), {
           route: '/api/doctors',
           method: 'POST',
           input: { code, name, specialty }
         }, req.user?.id);
         
-        if (String(e?.message || '').includes('duplicate key')) {
+        if (String(e).includes('duplicate key')) {
           return res.status(409).json({ error: 'Doctor code exists' });
         }
         
@@ -803,8 +777,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM products ORDER BY created_at DESC LIMIT 200');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Products get error:', e);
+      } catch (e: unknown) {
+        Logger.error('Products get error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch products' });
       }
     });
@@ -813,9 +787,9 @@ export function createApp() {
       try {
         const { name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip } = req.body;
         const result = await getPool().query('INSERT INTO products (name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *', [name, category, status || 'Active', price || 0, product_type || null, packaging_type || null, strips_per_box || null, units_per_strip || null]);
-        res.json(result.rows[0]);
-      } catch (e) {
-        console.error('Products post error:', e);
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
+        Logger.error('Products post error', { error: String(e) });
         res.status(500).json({ error: 'Failed to create product' });
       }
     });
@@ -825,8 +799,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 200');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Investments get error:', e);
+      } catch (e: unknown) {
+        Logger.error('Investments get error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch investments' });
       }
     });
@@ -844,7 +818,7 @@ export function createApp() {
           req.user.id, 
           'create', 
           'investment', 
-          result.rows[0].id, 
+          assertResult<any>(result.rows[0]).id, // Use assertResult here
           { 
             amount, 
             doctor_code, 
@@ -853,15 +827,15 @@ export function createApp() {
           }
         );
         
-        res.json(result.rows[0]);
-      } catch (e) {
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
         // Use enhanced error logging
         const doctor_id = req.body.doctor_id || null;
         const doctor_code = req.body.doctor_code || null;
         const amount = req.body.amount || 0;
         const investment_date = req.body.investment_date || new Date().toISOString();
         
-        logEnhancedError(e, {
+        logEnhancedError(new Error(String(e)), {
           route: '/api/investments',
           method: 'POST',
           input: { 
@@ -879,10 +853,10 @@ export function createApp() {
     app.get('/api/investments/summary', requireAuth, async (req: any, res) => {
       try {
         const result = await getPool().query('SELECT COALESCE(SUM(amount),0)::numeric AS total_investments, COALESCE(SUM(expected_returns),0)::numeric AS total_expected, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments');
-        const r = result.rows[0] || { total_investments: 0, total_expected: 0, total_actual: 0 };
+        const r = assertResult<any>(result.rows[0]) || { total_investments: 0, total_expected: 0, total_actual: 0 }; // Use assertResult here
         res.json({ totalInvestments: Number(r.total_investments), totalExpected: Number(r.total_expected), totalActual: Number(r.total_actual) });
-      } catch (e) {
-        console.error('Investments summary error:', e);
+      } catch (e: unknown) {
+        Logger.error('Investments summary error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch summary' });
       }
     });
@@ -895,8 +869,8 @@ export function createApp() {
         const amounts = rows.map((r: any) => Number(r.total_amount));
         const actuals = rows.map((r: any) => Number(r.total_actual));
         res.json({ labels, amounts, actuals });
-      } catch (e) {
-        console.error('Investments monthly summary error:', e);
+      } catch (e: unknown) {
+        Logger.error('Investments monthly summary error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch monthly summary' });
       }
     });
@@ -908,10 +882,10 @@ export function createApp() {
         const productResult = await getPool().query('SELECT COUNT(*)::int as count FROM products');
         const roiResult = await getPool().query('SELECT CASE WHEN SUM(amount) > 0 THEN (SUM(COALESCE(actual_returns, 0)) / SUM(amount) * 100)::numeric ELSE 0 END as roi FROM investments');
         
-        const investmentCount = investmentResult.rows[0].count;
-        const doctorCount = doctorResult.rows[0].count;
-        const productCount = productResult.rows[0].count;
-        const roiData = roiResult.rows[0].roi;
+        const investmentCount = assertResult<any>(investmentResult.rows[0]).count; // Use assertResult here
+        const doctorCount = assertResult<any>(doctorResult.rows[0]).count; // Use assertResult here
+        const productCount = assertResult<any>(productResult.rows[0]).count; // Use assertResult here
+        const roiData = assertResult<any>(roiResult.rows[0]).roi; // Use assertResult here
         
         res.json({
           totalInvestments: investmentCount,
@@ -919,8 +893,8 @@ export function createApp() {
           products: productCount,
           roi: Number(roiData || 0).toFixed(2)
         });
-      } catch (e) {
-        console.error('Dashboard stats error:', e);
+      } catch (e: unknown) {
+        Logger.error('Dashboard stats error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch stats' });
       }
     });
@@ -929,8 +903,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 10');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Recent investments error:', e);
+      } catch (e: unknown) {
+        Logger.error('Recent investments error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch recent investments' });
       }
     });
@@ -940,8 +914,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM bills ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Bills get error:', e);
+      } catch (e: unknown) {
+        Logger.error('Bills get error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch bills' });
       }
     });
@@ -950,9 +924,9 @@ export function createApp() {
       try {
         const { merchant, bill_date, total, items, raw_text, extracted } = req.body;
         const result = await getPool().query('INSERT INTO bills (merchant, bill_date, total, items, raw_text, extracted, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', [merchant || null, bill_date || null, total || 0, items || [], raw_text || null, extracted || {}, req.user.id]);
-        res.json(result.rows[0]);
-      } catch (e) {
-        console.error('Bills post error:', e);
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
+        Logger.error('Bills post error', { error: String(e) });
         res.status(500).json({ error: 'Failed to create bill' });
       }
     });
@@ -962,8 +936,8 @@ export function createApp() {
       try {
         const result = await getPool().query('SELECT * FROM pharmacies ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
-      } catch (e) {
-        console.error('Pharmacies get error:', e);
+      } catch (e: unknown) {
+        Logger.error('Pharmacies get error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch pharmacies' });
       }
     });
@@ -972,25 +946,17 @@ export function createApp() {
       try {
         const { name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied } = req.body;
         const result = await getPool().query('INSERT INTO pharmacies (name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [name, city, address, product_with_count_given || [], date_given, current_stock_owns || [], due_date_amount, scheme_applied || null, req.user.id]);
-        res.json(result.rows[0]);
-      } catch (e) {
-        console.error('Pharmacies post error:', e);
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
+        Logger.error('Pharmacies post error', { error: String(e) });
         res.status(500).json({ error: 'Failed to create pharmacy' });
       }
     });
 
     console.log('All routes configured successfully');
     return app;
-  } catch (error) {
-    console.error('CRITICAL: Error in createApp():', error);
-    
-    // Log critical error to Axiom
-    ingest('vercel-errors', [{
-      type: 'createApp',
-      error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
-    }]);
-    
+  } catch (error: unknown) { // Explicitly type error as unknown
+    Logger.error('CRITICAL: Error in createApp()', { error: String(error) });
     throw error;
   }
 }
