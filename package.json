@@ -22,17 +22,7 @@
     "migrate:rollback": "npm run knex migrate:rollback",
     "monitor:up": "docker-compose up -d prometheus grafana",
     "monitor:down": "docker-compose down",
-    "monitor:logs": "docker-compose logs -f prometheus grafana",
-    "axiom:login": "npx @axiomhq/axiom auth login",
-    "axiom:ingest": "npx @axiomhq/axiom ingest",
-    "axiom:query": "npx @axiomhq/axiom query",
-    "axiom:dataset:list": "npx @axiomhq/axiom dataset list",
-    "axiom:dataset:create": "npx @axiomhq/axiom dataset create aarez-mgnmt-logs",
-    "axiom:setup": "bash scripts/axiom-setup.sh",
-    "axiom:test-log": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs tsx scripts/test-axiom-logging.ts",
-    "axiom:verify": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs node scripts/verify-axiom.js",
-    "axiom:verify-config": "echo \"Axiom Token: ${VITE_AXIOM_TOKEN:0:5}... Dataset: ${VITE_AXIOM_DATASET}\"",
-    "axiom:config:check": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs tsx scripts/axiom-config-check.ts"
+    "monitor:logs": "docker-compose logs -f prometheus grafana"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
