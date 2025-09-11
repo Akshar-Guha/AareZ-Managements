@@ -1,15 +1,19 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/api"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "api/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "env": {
@@ -19,6 +23,5 @@
     "NODE_OPTIONS": "--enable-source-maps",
     "LOG_LEVEL": "info"
   },
-  "regions": ["all"],
-  "framework": "express"
+  "regions": ["all"]
 }
