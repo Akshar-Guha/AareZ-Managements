@@ -28,9 +28,7 @@
   ],
   "functions": {
     "dist/api/**/*.js": {
-      "runtime": "nodejs22.x",
-      "memory": 1024,
-      "maxDuration": 10
+      "runtime": "nodejs18.x"
     }
   }
 }
