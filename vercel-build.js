@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
@@ -9,8 +9,8 @@ const execAsync = promisify(exec);
 async function compileTypescript() {
   console.log('Starting TypeScript compilation...');
   try {
-    // Compile TypeScript files
-    await execAsync('npx tsc --project tsconfig.json');
+    // Compile TypeScript files with specific configuration
+    await execAsync('npx tsc --project tsconfig.json --outDir dist/api');
     console.log('TypeScript compilation completed successfully.');
   } catch (error) {
     console.error('TypeScript compilation failed:', error);
@@ -21,30 +21,39 @@ async function compileTypescript() {
 async function prepareBuildOutput() {
   console.log('Preparing build output...');
   
-  // Ensure dist directory exists
-  const distPath = path.resolve('dist');
-  if (!fs.existsSync(distPath)) {
-    fs.mkdirSync(distPath);
-  }
+  // Ensure dist/api directory exists
+  const distApiPath = path.resolve('dist/api');
+  fs.mkdirSync(distApiPath, { recursive: true });
 
-  // Copy necessary files to dist
+  // Copy necessary files to dist/api
   const filesToCopy = [
-    'api/index.js',
-    'api/app.js',
+    'api/index.ts',
+    'api/app.ts',
     'package.json'
   ];
 
   filesToCopy.forEach(file => {
     const sourcePath = path.resolve(file);
-    const destPath = path.resolve(distPath, path.basename(file));
+    const destPath = path.resolve(distApiPath, path.basename(file).replace('.ts', '.js'));
     
     if (fs.existsSync(sourcePath)) {
-      fs.copyFileSync(sourcePath, destPath);
-      console.log(`Copied ${file} to ${destPath}`);
+      // Compile individual file if not already compiled
+      try {
+        execAsync(`npx tsc ${sourcePath} --outDir ${distApiPath} --module ESNext`);
+        console.log(`Compiled and copied ${file} to ${destPath}`);
+      } catch (error) {
+        console.error(`Failed to compile ${file}:`, error);
+      }
     } else {
       console.warn(`File not found: ${sourcePath}`);
     }
   });
+
+  // Create a package.json in dist for module resolution
+  const distPackageJson = {
+    type: "module"
+  };
+  fs.writeFileSync(path.resolve('dist/package.json'), JSON.stringify(distPackageJson, null, 2));
 }
 
 async function main() {

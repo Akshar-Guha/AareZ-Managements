@@ -5,7 +5,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/dist/index.js"
+      "dest": "/dist/api/index.js"
     },
     {
       "src": "/assets/(.*\\.js)",
@@ -27,7 +27,7 @@
     }
   ],
   "functions": {
-    "api/**/*.js": {
+    "dist/api/**/*.js": {
       "runtime": "nodejs22.x",
       "memory": 1024,
       "maxDuration": 10
