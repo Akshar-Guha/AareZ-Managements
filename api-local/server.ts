@@ -1,17 +1,43 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
-dotenv.config({ path: '.env.local', override: true });
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables from multiple sources
+const loadEnv = () => {
+  const envFiles = [
+    '.env.local',
+    '.env'
+  ];
+
+  envFiles.forEach(file => {
+    const result = dotenv.config({ 
+      path: path.resolve(process.cwd(), file),
+      override: true 
+    });
+
+    if (result.error && result.error.code !== 'ENOENT') {
+      console.error(`Error loading ${file}:`, result.error);
+    }
+  });
+};
+
+loadEnv();
 
 const port = process.env.PORT || 3100;
 
-async function startServer() {
-  // Log environment variables for debugging
-  console.log('Environment Variables:');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not Set');
-  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not Set');
-  console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+// Log all environment variables for debugging
+console.group('Environment Variables');
+Object.keys(process.env)
+  .filter(key => key.startsWith('NODE_ENV') || 
+                key.startsWith('DATABASE_') || 
+                key.startsWith('JWT_') || 
+                key.startsWith('CORS_') || 
+                key.startsWith('MIGRATE_'))
+  .forEach(key => {
+    console.log(`${key}: ${process.env[key]}`);
+  });
+console.groupEnd();
 
+async function startServer() {
   // Dynamically import createApp and ensureSchema after dotenv.config()
   const { createApp } = await import('../api/app');
   const app = createApp();

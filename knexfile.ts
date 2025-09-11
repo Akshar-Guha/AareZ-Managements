@@ -8,9 +8,9 @@ const config: { [key: string]: Knex.Config } = {
     connection: {
       connectionString: process.env.DATABASE_URL,
       ssl: {
+        // For Neon PostgreSQL, we need to handle SSL carefully
         rejectUnauthorized: false,
-        // For Neon, we need to explicitly set the SSL mode
-        sslmode: 'require'
+        ca: process.env.DATABASE_SSL_CA, // Optional: if you have a custom CA
       }
     },
     pool: {
@@ -31,7 +31,7 @@ const config: { [key: string]: Knex.Config } = {
       connectionString: process.env.DATABASE_URL,
       ssl: {
         rejectUnauthorized: false,
-        sslmode: 'require'
+        ca: process.env.DATABASE_SSL_CA, // Optional: if you have a custom CA
       }
     },
     pool: {
