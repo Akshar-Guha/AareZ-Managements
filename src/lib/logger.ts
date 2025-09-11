@@ -17,17 +17,13 @@ interface LogEntry {
 
 class Logger {
   private static logLevel: LogLevel = LogLevel.INFO;
-  private static logFile: string | null = null;
+  private static isVercel: boolean = process.env.VERCEL === '1';
 
   static configure(options: { 
-    level?: LogLevel, 
-    logFilePath?: string 
+    level?: LogLevel 
   } = {}) {
     if (options.level) {
       this.logLevel = options.level;
-    }
-    if (options.logFilePath) {
-      this.logFile = path.resolve(options.logFilePath);
     }
   }
 
@@ -36,45 +32,32 @@ class Logger {
     return logLevels.indexOf(level) <= logLevels.indexOf(this.logLevel);
   }
 
-  private static writeToFile(entry: LogEntry) {
-    if (!this.logFile) return;
-
-    try {
-      const logEntry = `${entry.timestamp} [${entry.level}] ${entry.message} ${entry.context ? JSON.stringify(entry.context) : ''}\n`;
-      fs.appendFileSync(this.logFile, logEntry);
-    } catch (error) {
-      console.error('Failed to write to log file:', error);
-    }
+  private static formatLogMessage(level: LogLevel, message: string, context?: Record<string, any>): string {
+    const timestamp = new Date().toISOString();
+    const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+    return `${timestamp} [${level}] ${message}${contextStr}`;
   }
 
   private static log(level: LogLevel, message: string, context?: Record<string, any>) {
     if (!this.shouldLog(level)) return;
 
-    const entry: LogEntry = {
-      level,
-      message,
-      timestamp: new Date().toISOString(),
-      context
-    };
+    const formattedMessage = this.formatLogMessage(level, message, context);
 
-    // Console logging
+    // Always log to console
     switch (level) {
       case LogLevel.ERROR:
-        console.error(`[${level}] ${message}`, context || {});
+        console.error(formattedMessage);
         break;
       case LogLevel.WARN:
-        console.warn(`[${level}] ${message}`, context || {});
+        console.warn(formattedMessage);
         break;
       case LogLevel.INFO:
-        console.log(`[${level}] ${message}`, context || {});
+        console.log(formattedMessage);
         break;
       case LogLevel.DEBUG:
-        console.debug(`[${level}] ${message}`, context || {});
+        console.debug(formattedMessage);
         break;
     }
-
-    // File logging
-    this.writeToFile(entry);
   }
 
   static error(message: string, context?: Record<string, any>) {
@@ -111,10 +94,7 @@ class Logger {
 
 // Configure logger based on environment
 Logger.configure({
-  level: process.env.NODE_ENV === 'production' ? LogLevel.WARN : LogLevel.DEBUG,
-  logFilePath: process.env.NODE_ENV === 'production' 
-    ? '/var/log/aarez-mgnmt/app.log' 
-    : './logs/app.log'
+  level: process.env.NODE_ENV === 'production' ? LogLevel.WARN : LogLevel.DEBUG
 });
 
 export default Logger;
