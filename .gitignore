@@ -1,9 +1,9 @@
 node_modules
 .vercel
+# Environment files
 .env
 .env.local
-.env.development
-.env.production
+*.env
 dist
 *.log
 .DS_Store

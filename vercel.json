@@ -1,25 +1,24 @@
 {
   "version": 2,
-  "buildCommand": "node vercel-build.js",
-  "outputDirectory": "dist",
   "builds": [
     {
-      "src": "api/**/*.ts",
+      "src": "package.json",
       "use": "@vercel/node"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "index.html"
+      "dest": "api/index.ts"
     }
-  ]
+  ],
+  "env": {
+    "VITE_AXIOM_TOKEN": "@axiom_token",
+    "VITE_AXIOM_DATASET": "aarez-mgnmt-logs",
+    "VITE_AXIOM_ORG_ID": "@axiom_org_id",
+    "NODE_OPTIONS": "--enable-source-maps",
+    "LOG_LEVEL": "info"
+  },
+  "regions": ["all"],
+  "framework": "express"
 }

@@ -177,7 +177,23 @@ function logEnhancedError(
   ingest('enhanced-errors', [errorLog]);
 }
 
-// Performance tracking for database queries
+// Add a new performance logging function
+function logPerformanceMetric(metricName: string, duration: number, additionalContext: Record<string, any> = {}) {
+  const performanceLog = {
+    metricName,
+    duration,
+    timestamp: new Date().toISOString(),
+    ...additionalContext
+  };
+
+  // Log to Axiom
+  ingest('performance-metrics', [performanceLog]);
+
+  // Log to console for local debugging
+  console.log(`Performance Metric: ${metricName}`, performanceLog);
+}
+
+// Modify existing trackQueryPerformance to use new logging
 function trackQueryPerformance<T>(
   queryName: string, 
   queryFn: () => Promise<T>
@@ -188,33 +204,24 @@ function trackQueryPerformance<T>(
     .then((result) => {
       const duration = Date.now() - startTime;
       
-      // Log query performance
-      ingest('db-query-performance', [{
+      // Enhanced performance logging
+      logPerformanceMetric('database-query', duration, {
         queryName,
-        duration,
-        timestamp: new Date().toISOString()
-      }]);
-
-      // Update Prometheus histogram
-      httpRequestDurationMicroseconds.labels(
-        'database', 
-        queryName, 
-        '200'
-      ).observe(duration);
+        status: 'success',
+        rowCount: Array.isArray(result) ? result.length : 'N/A'
+      });
 
       return result;
     })
     .catch((error) => {
       const duration = Date.now() - startTime;
       
-      // Log query performance for failed queries
-      ingest('db-query-performance', [{
+      // Log performance for failed queries with error details
+      logPerformanceMetric('database-query', duration, {
         queryName,
-        duration,
         status: 'error',
-        error: String(error),
-        timestamp: new Date().toISOString()
-      }]);
+        errorMessage: String(error)
+      });
 
       throw error;
     });
@@ -1061,3 +1068,25 @@ export function createApp() {
     throw error;
   }
 }
+
+// Global error and unhandled rejection handlers
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  ingest('vercel-critical-errors', [{
+    type: 'uncaughtException',
+    error: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString()
+  }]);
+  // Optionally exit the process in a production environment
+  // process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  ingest('vercel-critical-errors', [{
+    type: 'unhandledRejection',
+    reason: String(reason),
+    timestamp: new Date().toISOString()
+  }]);
+});

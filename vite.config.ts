@@ -1,10 +1,9 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig(({ command, mode }) => {
-  const isProduction = mode === 'production';
-  
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react()],
     base: '/',
@@ -38,6 +37,10 @@ export default defineConfig(({ command, mode }) => {
       port: 5173,
       strictPort: true,
       host: true
+    },
+    define: {
+      'import.meta.env.VITE_AXIOM_TOKEN': JSON.stringify(env.VITE_AXIOM_TOKEN),
+      'import.meta.env.VITE_AXIOM_DATASET': JSON.stringify(env.VITE_AXIOM_DATASET || 'aarez-mgnmt-logs')
     }
   };
 });
