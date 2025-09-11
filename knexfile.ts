@@ -5,7 +5,13 @@ dotenv.config();
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: "pg",
-    connection: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/your_dev_db',
+    connection: {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { 
+        rejectUnauthorized: false,
+        ca: process.env.DATABASE_CA_CERT // Optional: if you need a custom CA cert
+      }
+    },
     migrations: {
       directory: './migrations'
     },
@@ -16,7 +22,13 @@ const config: { [key: string]: Knex.Config } = {
 
   production: {
     client: "pg",
-    connection: process.env.DATABASE_URL,
+    connection: {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { 
+        rejectUnauthorized: false,
+        ca: process.env.DATABASE_CA_CERT // Optional: if you need a custom CA cert
+      }
+    },
     migrations: {
       directory: './migrations'
     },

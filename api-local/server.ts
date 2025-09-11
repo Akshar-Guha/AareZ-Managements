@@ -1,16 +1,21 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
 
-const port = 3100;
+const port = process.env.PORT || 3100;
 
 async function startServer() {
+  // Log environment variables for debugging
+  console.log('Environment Variables:');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not Set');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not Set');
+  console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+
   // Dynamically import createApp and ensureSchema after dotenv.config()
   const { createApp } = await import('../api/app');
   const app = createApp();
 
-  // Call ensureSchema to create tables and default user
-  // await ensureSchema().catch(err => console.error('Migration error', err));
-  
   // Run Knex migrations before starting the server
   const knex = (await import('knex')).default;
   const knexConfig = (await import('../knexfile')).default;
