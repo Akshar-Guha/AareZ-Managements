@@ -18,6 +18,7 @@ interface LogEntry {
 class Logger {
   private static logLevel: LogLevel = LogLevel.INFO;
   private static isVercel: boolean = process.env.VERCEL === '1';
+  private static isLoggingEnabled: boolean = process.env.VERCEL_LOGGING === 'true';
 
   static configure(options: { 
     level?: LogLevel 
@@ -28,6 +29,9 @@ class Logger {
   }
 
   private static shouldLog(level: LogLevel): boolean {
+    // Only log if logging is enabled and log level is appropriate
+    if (!this.isLoggingEnabled) return false;
+
     const logLevels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
     return logLevels.indexOf(level) <= logLevels.indexOf(this.logLevel);
   }

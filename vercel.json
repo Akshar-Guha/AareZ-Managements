@@ -25,15 +25,8 @@
     "NODE_OPTIONS": "--enable-source-maps",
     "LOG_LEVEL": "info",
     "CORS_ORIGIN": "http://localhost:5173,https://aarez-mgnmt.vercel.app",
-    "VERCEL_LOGS_ENABLED": "1"
+    "VERCEL_LOGGING": "true"
   },
   "regions": ["iad1"],
-  "framework": "vite",
-  "logs": {
-    "enabled": true,
-    "source": [
-      "stdout",
-      "stderr"
-    ]
-  }
+  "framework": "vite"
 }
