@@ -27,7 +27,7 @@ function safeParseInt(value: unknown, defaultValue = 0): number {
  */
 function ingest(dataset: string, data: unknown[]): void {
   // Always log to console for local debugging
-  console.log(`Logging to dataset: ${dataset}`, JSON.stringify(data, null, 2));
+  Logger.info(`Logging to dataset: ${dataset}`, { data });
 }
 
 /**
@@ -47,8 +47,10 @@ async function logUserActivity(
 ): Promise<void> {
   try {
     // Log to console for immediate visibility
-    console.log(`User Activity: ${action} on ${entityType}`, { 
+    Logger.info('User Activity', { 
       userId, 
+      action, 
+      entityType, 
       entityId, 
       details 
     });
@@ -61,7 +63,7 @@ async function logUserActivity(
       );
     }
   } catch (error) {
-    console.error('Failed to log user activity:', error);
+    Logger.error('Failed to log user activity', { error });
   }
 }
 
@@ -72,7 +74,7 @@ async function logUserActivity(
  * @param userId - Optional user ID associated with the error
  */
 function logEnhancedError(
-  error: any, 
+  error: Error, 
   context: { 
     route?: string, 
     method?: string, 
@@ -81,7 +83,7 @@ function logEnhancedError(
   userId: number | null = null
 ): void {
   const errorLog = {
-    message: error instanceof Error ? error.message : String(error),
+    message: error.message,
     name: error.name || 'UnknownError',
     stack: error.stack,
     context,
@@ -90,7 +92,7 @@ function logEnhancedError(
   };
 
   // Log to console for immediate visibility
-  console.error('Enhanced Error Log:', errorLog);
+  Logger.error('Enhanced Error Log', errorLog);
 }
 
 // Add a new performance logging function
@@ -103,7 +105,7 @@ function logPerformanceMetric(metricName: string, duration: number, additionalCo
   };
 
   // Log to console for local debugging
-  console.log(`Performance Metric: ${metricName}`, performanceLog);
+  Logger.debug('Performance Metric', performanceLog);
 }
 
 // Modify existing trackQueryPerformance to use new logging
