@@ -1,10 +1,10 @@
-import { axiomLogger } from '../lib/axiomLogger';
+import Logger from '../lib/logger';
 
 export function runLoggingDiagnostics() {
-  console.log('Starting Axiom Logging Diagnostics...');
+  console.log('Starting Logging Diagnostics...');
 
   // System Startup Log
-  axiomLogger.info('System Startup', {
+  Logger.info('System Startup', {
     version: '0.1.0',
     environment: import.meta.env.MODE,
     timestamp: new Date().toISOString(),
@@ -14,7 +14,7 @@ export function runLoggingDiagnostics() {
     }
   });
 
-  // Simulated User Activity
+  // Simulated User Activities
   const simulateUserActivities = () => {
     const userActivities = [
       { userId: 'user_001', action: 'login', success: true },
@@ -23,7 +23,9 @@ export function runLoggingDiagnostics() {
     ];
 
     userActivities.forEach(activity => {
-      axiomLogger.trackUserActivity(activity.userId, activity.action, {
+      Logger.info('User Activity', {
+        userId: activity.userId,
+        action: activity.action,
         success: activity.success,
         timestamp: new Date().toISOString()
       });
@@ -39,7 +41,7 @@ export function runLoggingDiagnostics() {
     ];
 
     errorScenarios.forEach(scenario => {
-      axiomLogger.error(`Simulated ${scenario.type} error`, {
+      Logger.error(`Simulated ${scenario.type} error`, {
         errorType: scenario.type,
         errorMessage: scenario.message,
         timestamp: new Date().toISOString()
@@ -56,7 +58,7 @@ export function runLoggingDiagnostics() {
     }
     const end = performance.now();
 
-    axiomLogger.debug('Performance Measurement', {
+    Logger.debug('Performance Measurement', {
       operation: 'heavy_computation',
       duration: end - start,
       timestamp: new Date().toISOString()
@@ -68,7 +70,7 @@ export function runLoggingDiagnostics() {
   simulateErrors();
   measurePerformance();
 
-  console.log('Axiom Logging Diagnostics Complete.');
+  console.log('Logging Diagnostics Complete.');
 }
 
 // Run diagnostics only in development

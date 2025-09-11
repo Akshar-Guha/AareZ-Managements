@@ -8,7 +8,19 @@ import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import Logger from '../src/lib/logger';
 
-// Removed Axiom client initialization and related functions
+// Type assertion and helper functions
+function assertResult<T>(result: unknown): T {
+  return result as T;
+}
+
+function safeParseInt(value: unknown, defaultValue = 0): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+  return defaultValue;
+}
 
 /**
  * Safe logging function with multiple fallback mechanisms
@@ -184,7 +196,7 @@ const totalRequests = new promClient.Counter({
 const assertResult = <T>(result: unknown): T => result as T;
 
 // Global error and unhandled rejection handlers
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: Error) => {
   Logger.error('Uncaught Exception', {
     message: error.message,
     stack: error.stack
@@ -193,7 +205,7 @@ process.on('uncaughtException', (error) => {
   // process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   Logger.error('Unhandled Rejection', {
     reason: String(reason),
     promise: String(promise)
