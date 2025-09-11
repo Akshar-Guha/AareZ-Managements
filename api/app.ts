@@ -1,10 +1,10 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
 import jwt from 'jsonwebtoken';
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import bcrypt from 'bcrypt';
 import Logger from '../src/lib/logger';
 
@@ -97,8 +97,8 @@ function logPerformanceMetric(metricName: string, duration: number, additionalCo
 // Modify trackQueryPerformance to use new logging
 function trackQueryPerformance<T>(
   queryName: string, 
-  queryFn: () => Promise<T>
-): Promise<T> {
+  queryFn: () => Promise<QueryResult<T>>
+): Promise<QueryResult<T>> {
   const startTime = Date.now();
 
   return queryFn()
@@ -109,7 +109,7 @@ function trackQueryPerformance<T>(
       logPerformanceMetric('database-query', duration, {
         queryName,
         status: 'success',
-        rowCount: Array.isArray(result) ? result.length : 'N/A'
+        rowCount: result.rowCount
       });
 
       return result;
@@ -132,7 +132,7 @@ function trackQueryPerformance<T>(
 let pool: Pool | null = null;
 const DATABASE_URL = process.env.DATABASE_URL;
 
-function getPool() {
+function getPool(): Pool {
   if (!DATABASE_URL) {
     console.warn('DATABASE_URL not set. API will error until it is configured.');
     throw new Error('DATABASE_URL is required');
@@ -212,7 +212,7 @@ export function createApp() {
     const app = express();
 
     // Middleware to log requests
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       const startTime = Date.now();
       
       // Log request details to console
