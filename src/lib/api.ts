@@ -1,11 +1,18 @@
 // API base URL - use environment-specific URLs
 const getApiBaseUrl = () => {
+  console.group('API Base URL Determination');
+  console.log('Current hostname:', window.location.hostname);
+  
   // Check if we're running in a Vercel production environment
   if (window.location.hostname.includes('vercel.app')) {
+    console.log('Detected Vercel environment');
+    console.groupEnd();
     return 'https://aarez-mgnmt.vercel.app';  // Use full URL for Vercel
   }
   
   // Local development
+  console.log('Using local development URL');
+  console.groupEnd();
   return 'http://localhost:3100';  // Local API server
 };
 
@@ -13,6 +20,7 @@ export const API = {
   async get<T>(path: string): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
+      console.group(`API GET Request: ${path}`);
       console.log(`Fetching GET ${baseUrl}/api${path}`);
       
       const res = await fetch(`${baseUrl}/api${path}`, {
@@ -28,12 +36,17 @@ export const API = {
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`GET /api${path} error:`, errorText);
+        console.groupEnd();
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
-      return res.json();
+      const data = await res.json();
+      console.log('Response data:', data);
+      console.groupEnd();
+      return data;
     } catch (error) {
       console.error(`GET /api${path} network error:`, error);
+      console.groupEnd();
       throw error;
     }
   },
@@ -41,6 +54,7 @@ export const API = {
   async post<T>(path: string, body?: any): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
+      console.group(`API POST Request: ${path}`);
       console.log(`Posting to ${baseUrl}/api${path}`, body);
       const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'POST', 
@@ -57,12 +71,17 @@ export const API = {
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`POST /api${path} error:`, errorText);
+        console.groupEnd();
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
-      return res.json();
+      const data = await res.json();
+      console.log('Response data:', data);
+      console.groupEnd();
+      return data;
     } catch (error) {
       console.error(`POST /api${path} network error:`, error);
+      console.groupEnd();
       throw error;
     }
   },

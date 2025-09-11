@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import bcrypt from 'bcryptjs';  // Direct default import
+import bcrypt from 'bcrypt';  // Changed from bcryptjs
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('users', (table) => {

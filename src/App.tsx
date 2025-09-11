@@ -18,22 +18,47 @@ import OCRPage from './pages/OCRPage';
 export function App() {
   const navigate = useNavigate();
   const { user, isLoading, checkAuth } = useAuth();
-  console.log('useAuth in App.tsx:', { user, isLoading });
+  
+  console.group('App Component Initialization');
+  console.log('Initial state:', { user, isLoading });
+  console.log('Current pathname:', window.location.pathname);
+  console.groupEnd();
 
   useEffect(() => {
-    checkAuth();
+    console.group('CheckAuth Effect');
+    console.log('Calling checkAuth()');
+    checkAuth()
+      .then(() => console.log('CheckAuth completed successfully'))
+      .catch((error) => {
+        console.error('CheckAuth failed:', error);
+      });
+    console.groupEnd();
   }, [checkAuth]);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      navigate('/sign-in');
+    console.group('Navigation Effect');
+    console.log('Current state:', { user, isLoading });
+    
+    if (!isLoading) {
+      if (!user) {
+        console.log('No user found, navigating to sign-in');
+        navigate('/sign-in');
+      } else {
+        console.log('User found, current location:', window.location.pathname);
+        if (window.location.pathname === '/sign-in') {
+          navigate('/');
+        }
+      }
     }
+    console.groupEnd();
   }, [user, isLoading, navigate]);
 
   if (isLoading) {
-    return <div>Loading...</div>; // Or a more elaborate loading spinner
+    console.log('Rendering loading state');
+    return <div>Loading...</div>;
   }
 
+  console.log('Rendering main routes');
   return (
     <>
       <Toaster position="top-center" richColors />
