@@ -10,7 +10,7 @@ async function compileTypescript() {
   console.log('Starting TypeScript compilation...');
   try {
     // Compile TypeScript files with specific configuration
-    await execAsync('npx tsc --project tsconfig.json --outDir dist/api');
+    execSync('npx tsc --project tsconfig.json --outDir dist/api', { stdio: 'inherit' });
     console.log('TypeScript compilation completed successfully.');
   } catch (error) {
     console.error('TypeScript compilation failed:', error);
@@ -25,25 +25,19 @@ async function prepareBuildOutput() {
   const distApiPath = path.resolve('dist/api');
   fs.mkdirSync(distApiPath, { recursive: true });
 
-  // Copy necessary files to dist/api
+  // Copy necessary files to dist
   const filesToCopy = [
-    'api/index.ts',
-    'api/app.ts',
+    'index.html',
     'package.json'
   ];
 
   filesToCopy.forEach(file => {
     const sourcePath = path.resolve(file);
-    const destPath = path.resolve(distApiPath, path.basename(file).replace('.ts', '.js'));
+    const destPath = path.resolve('dist', file);
     
     if (fs.existsSync(sourcePath)) {
-      // Compile individual file if not already compiled
-      try {
-        execAsync(`npx tsc ${sourcePath} --outDir ${distApiPath} --module ESNext`);
-        console.log(`Compiled and copied ${file} to ${destPath}`);
-      } catch (error) {
-        console.error(`Failed to compile ${file}:`, error);
-      }
+      fs.copyFileSync(sourcePath, destPath);
+      console.log(`Copied ${file} to ${destPath}`);
     } else {
       console.warn(`File not found: ${sourcePath}`);
     }
@@ -51,7 +45,8 @@ async function prepareBuildOutput() {
 
   // Create a package.json in dist for module resolution
   const distPackageJson = {
-    type: "module"
+    type: "module",
+    name: "aarez-mgnmt-vercel-build"
   };
   fs.writeFileSync(path.resolve('dist/package.json'), JSON.stringify(distPackageJson, null, 2));
 }
@@ -62,10 +57,10 @@ async function main() {
     await execAsync('npm run build');
     
     // Compile TypeScript files
-    await compileTypescript();
+    compileTypescript();
     
     // Prepare build output
-    await prepareBuildOutput();
+    prepareBuildOutput();
     
     console.log('Vercel build completed successfully.');
   } catch (error) {

@@ -1,9 +1,15 @@
 {
   "version": 2,
+  "buildCommand": "node vercel-build.js",
+  "outputDirectory": "dist",
   "builds": [
     {
-      "src": "api/**/*.js",
+      "src": "api/**/*.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -13,7 +19,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "index.html"
     }
   ]
 }
