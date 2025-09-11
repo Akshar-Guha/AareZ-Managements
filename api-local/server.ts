@@ -19,14 +19,21 @@ async function startServer() {
   // Run Knex migrations before starting the server
   const knex = (await import('knex')).default;
   const knexConfig = (await import('../knexfile')).default;
+  
+  console.log('Knex Configuration:', JSON.stringify(knexConfig.development, null, 2));
+
   const db = knex(knexConfig.development);
 
   try {
+    console.log('Attempting to connect to database...');
+    await db.raw('SELECT 1'); // Test database connection
+    console.log('Database connection successful.');
+
     console.log('Running database migrations...');
-    await db.migrate.latest();
-    console.log('Database migrations completed.');
+    const migrationResult = await db.migrate.latest();
+    console.log('Migrations completed. Result:', migrationResult);
   } catch (err) {
-    console.error('Error during database migrations:', err);
+    console.error('Error during database connection or migrations:', err);
     process.exit(1); // Exit if migrations fail
   } finally {
     await db.destroy(); // Close the Knex connection pool after migrations

@@ -7,10 +7,15 @@ const config: { [key: string]: Knex.Config } = {
     client: "pg",
     connection: {
       connectionString: process.env.DATABASE_URL,
-      ssl: { 
+      ssl: {
         rejectUnauthorized: false,
-        ca: process.env.DATABASE_CA_CERT // Optional: if you need a custom CA cert
+        // For Neon, we need to explicitly set the SSL mode
+        sslmode: 'require'
       }
+    },
+    pool: {
+      min: 2,
+      max: 10
     },
     migrations: {
       directory: './migrations'
@@ -24,20 +29,20 @@ const config: { [key: string]: Knex.Config } = {
     client: "pg",
     connection: {
       connectionString: process.env.DATABASE_URL,
-      ssl: { 
+      ssl: {
         rejectUnauthorized: false,
-        ca: process.env.DATABASE_CA_CERT // Optional: if you need a custom CA cert
+        sslmode: 'require'
       }
+    },
+    pool: {
+      min: 2,
+      max: 10
     },
     migrations: {
       directory: './migrations'
     },
     seeds: {
       directory: './seeds'
-    },
-    pool: {
-      min: 2,
-      max: 10
     },
   }
 };
