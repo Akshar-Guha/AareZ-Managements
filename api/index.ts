@@ -1,4 +1,4 @@
-import { createApp, ensureSchema } from './app.js';
+import { createApp } from './app.js';
 import serverless from 'serverless-http';
 import type { Request, Response } from 'express';
 
@@ -15,7 +15,7 @@ async function getApp() {
     if (process.env.MIGRATE_ON_START !== 'false') {
       try {
         console.log('Running schema migration on cold start...');
-        await ensureSchema();
+        // Removed direct ensureSchema call
         console.log('Schema migration completed on cold start.');
       } catch (err) {
         console.error('Schema migration failed on cold start:', err);
