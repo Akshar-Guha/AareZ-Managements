@@ -14,7 +14,7 @@
   ],
   "functions": {
     "dist/api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs22.x"
     }
   }
 }
