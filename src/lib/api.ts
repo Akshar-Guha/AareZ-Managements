@@ -2,11 +2,11 @@
 const getApiBaseUrl = () => {
   // Check if we're running in a Vercel production environment
   if (window.location.hostname.includes('vercel.app')) {
-    return '';  // Use relative URL for same-origin requests on Vercel
+    return 'https://aarez-mgnmt.vercel.app';  // Use full URL for Vercel
   }
   
   // Local development
-  return '';  // Also use relative paths for local
+  return 'http://localhost:3100';  // Local API server
 };
 
 export const API = {

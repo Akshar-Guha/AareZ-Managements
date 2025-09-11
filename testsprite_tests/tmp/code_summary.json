@@ -2,45 +2,64 @@
   "tech_stack": [
     "TypeScript",
     "React",
+    "Express",
+    "PostgreSQL",
     "Vite",
     "Tailwind CSS",
-    "Neon PostgreSQL",
-    "Vercel",
-    "Knex.js"
+    "Axiom Logging",
+    "Prometheus Metrics",
+    "JWT Authentication"
   ],
   "features": [
     {
       "name": "Authentication",
-      "description": "User login and authentication system",
+      "description": "User registration, login, and authorization system",
       "files": [
-        "src/context/AuthContext.tsx",
-        "src/pages/Login.tsx"
+        "src/stores/useAuthStore.ts",
+        "api/app.ts",
+        "src/pages/SignIn.tsx"
       ]
     },
     {
       "name": "Dashboard",
-      "description": "Main dashboard with various analytics and management views",
+      "description": "Main dashboard with key performance indicators and analytics",
       "files": [
         "src/pages/Dashboard.tsx",
-        "src/pages/Analytics.tsx",
-        "src/pages/Inventory.tsx",
-        "src/pages/Investments.tsx"
+        "src/pages/MRDashboard.tsx",
+        "src/components/StatsCard.tsx"
       ]
     },
     {
-      "name": "Pharmacy Management",
-      "description": "Pharmacy-related operations and management",
+      "name": "Investments Tracking",
+      "description": "Manage and track medical representative investments",
       "files": [
-        "src/pages/Pharmacy.tsx",
-        "src/components/PharmacyModal.tsx"
+        "src/pages/Investments.tsx",
+        "api/app.ts",
+        "migrations/20250908181531_ts.ts"
       ]
     },
     {
       "name": "Product Management",
-      "description": "Product-related operations and management",
+      "description": "Manage and track medical products",
       "files": [
         "src/pages/Products.tsx",
-        "src/components/ProductModal.tsx"
+        "api/app.ts"
+      ]
+    },
+    {
+      "name": "Pharmacy Management",
+      "description": "Track and manage pharmacy interactions",
+      "files": [
+        "src/pages/Pharmacy.tsx",
+        "api/app.ts"
+      ]
+    },
+    {
+      "name": "Logging and Monitoring",
+      "description": "Comprehensive logging and performance monitoring system",
+      "files": [
+        "api/app.ts",
+        "prometheus.yml"
       ]
     }
   ]

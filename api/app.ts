@@ -8,33 +8,242 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 
-// Initialize Axiom client only if credentials are provided
-const axiomToken = process.env.AXIOM_TOKEN;
-const axiomOrgId = process.env.AXIOM_ORG_ID;
+// Safer Axiom client initialization
+function createAxiomClient() {
+  // Log all environment variables for debugging
+  console.log('Axiom Environment Variables:', {
+    AXIOM_TOKEN: process.env.AXIOM_TOKEN ? 'Set' : 'Not Set',
+    AXIOM_ORG_ID: process.env.AXIOM_ORG_ID ? 'Set' : 'Not Set',
+    AXIOM_DATASET: process.env.AXIOM_DATASET || 'aarez-mgnmt-logs'
+  });
 
-// Create the client only when both token and orgId are available; otherwise stub out ingest
-const axiomClient = axiomToken && axiomOrgId
-  ? new Axiom({ token: axiomToken, orgId: axiomOrgId })
-  : null;
+  const axiomToken = process.env.AXIOM_TOKEN;
+  const axiomOrgId = process.env.AXIOM_ORG_ID;
+  const axiomDataset = process.env.AXIOM_DATASET || 'aarez-mgnmt-logs';
+
+  if (!axiomToken || !axiomOrgId) {
+    console.warn('Axiom logging is disabled: Missing token or org ID');
+    
+    // Log detailed error for debugging
+    console.error(JSON.stringify({
+      type: 'axiom-initialization-error',
+      message: 'Axiom client initialization failed',
+      details: {
+        tokenMissing: !axiomToken,
+        orgIdMissing: !axiomOrgId
+      },
+      timestamp: new Date().toISOString()
+    }));
+
+    return null;
+  }
+
+  try {
+    const client = new Axiom({
+      token: axiomToken,
+      orgId: axiomOrgId
+    });
+
+    // Log successful client initialization
+    console.log(JSON.stringify({
+      type: 'axiom-initialization',
+      message: 'Axiom client successfully initialized',
+      timestamp: new Date().toISOString()
+    }));
+
+    return client;
+  } catch (error) {
+    // Log detailed error information
+    console.error(JSON.stringify({
+      type: 'axiom-client-creation-error',
+      message: 'Failed to create Axiom client',
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      timestamp: new Date().toISOString()
+    }));
+
+    return null;
+  }
+}
+
+// Create Axiom client
+const axiomClient = createAxiomClient();
 
 /**
- * Safe wrapper around Axiom ingest that only sends data when the client is available.
- * Never throws and does not rely on Promise chaining (ingest may be void in some versions).
+ * Safe logging function with multiple fallback mechanisms
  */
 function ingest(dataset: string, data: unknown[]): void {
-  if (!axiomClient) return;
-  try {
-    const maybePromise = (axiomClient as any).ingest(dataset, data);
-    console.log('ingest maybePromise type:', typeof maybePromise);
-    if (maybePromise && typeof maybePromise.then === 'function') {
-      // Handle async errors without affecting request lifecycle
-      (maybePromise as Promise<void>).catch((err) => {
-        console.error('Axiom ingest error:', err);
-      });
-    }
-  } catch (err) {
-    console.error('Axiom ingest error (sync):', err);
+  // Always log to console for local debugging
+  console.log(`Logging to dataset: ${dataset}`, JSON.stringify(data, null, 2));
+
+  // If Axiom client is not available, exit early
+  if (!axiomClient) {
+    console.warn('Axiom client not initialized. Logging disabled.');
+    return;
   }
+
+  // Attempt to ingest data
+  try {
+    const maybePromise = axiomClient.ingest(dataset, data);
+    
+    // Explicitly check for promise-like behavior
+    if (maybePromise != null && typeof (maybePromise as Promise<any>).then === 'function') {
+      (maybePromise as Promise<any>)
+        .then(() => {
+          console.log(`Successfully logged to Axiom dataset: ${dataset}`);
+        })
+        .catch((error) => {
+          console.error(`Axiom ingest error in ${dataset}:`, error);
+        });
+    }
+  } catch (syncError) {
+    console.error('Synchronous Axiom logging error:', syncError);
+  }
+}
+
+/**
+ * Log user activity with detailed context
+ * @param userId - ID of the user performing the action
+ * @param action - Type of action performed
+ * @param entityType - Type of entity affected (e.g., 'doctor', 'investment')
+ * @param entityId - ID of the affected entity
+ * @param details - Additional context about the action
+ */
+async function logUserActivity(
+  userId: number | null, 
+  action: string, 
+  entityType: string, 
+  entityId: number | null = null, 
+  details: Record<string, any> = {}
+): Promise<void> {
+  try {
+    // Log to console for immediate visibility
+    console.log(`User Activity: ${action} on ${entityType}`, { 
+      userId, 
+      entityId, 
+      details 
+    });
+
+    // Ingest to Axiom for long-term tracking
+    ingest('user-activities', [{
+      userId,
+      action,
+      entityType,
+      entityId,
+      details,
+      timestamp: new Date().toISOString()
+    }]);
+
+    // Optionally log to database activity_logs table
+    if (userId) {
+      await getPool().query(
+        'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
+        [userId, action, entityType, entityId, JSON.stringify(details)]
+      );
+    }
+  } catch (error) {
+    console.error('Failed to log user activity:', error);
+  }
+}
+
+/**
+ * Enhanced error logging with more context and traceability
+ * @param error - The error object
+ * @param context - Additional context about where the error occurred
+ * @param userId - Optional user ID associated with the error
+ */
+function logEnhancedError(
+  error: any, 
+  context: { 
+    route?: string, 
+    method?: string, 
+    input?: any 
+  } = {}, 
+  userId: number | null = null
+): void {
+  const errorLog = {
+    message: error instanceof Error ? error.message : String(error),
+    name: error.name || 'UnknownError',
+    stack: error.stack,
+    context,
+    userId,
+    timestamp: new Date().toISOString()
+  };
+
+  // Log to console for immediate visibility
+  console.error('Enhanced Error Log:', errorLog);
+
+  // Ingest to Axiom for centralized error tracking
+  ingest('enhanced-errors', [errorLog]);
+}
+
+// Performance tracking for database queries
+function trackQueryPerformance<T>(
+  queryName: string, 
+  queryFn: () => Promise<T>
+): Promise<T> {
+  const startTime = Date.now();
+
+  return queryFn()
+    .then((result) => {
+      const duration = Date.now() - startTime;
+      
+      // Log query performance
+      ingest('db-query-performance', [{
+        queryName,
+        duration,
+        timestamp: new Date().toISOString()
+      }]);
+
+      // Update Prometheus histogram
+      httpRequestDurationMicroseconds.labels(
+        'database', 
+        queryName, 
+        '200'
+      ).observe(duration);
+
+      return result;
+    })
+    .catch((error) => {
+      const duration = Date.now() - startTime;
+      
+      // Log query performance for failed queries
+      ingest('db-query-performance', [{
+        queryName,
+        duration,
+        status: 'error',
+        error: String(error),
+        timestamp: new Date().toISOString()
+      }]);
+
+      throw error;
+    });
+}
+
+// Database setup: Create a singleton pool
+let pool: Pool | null = null;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+function getPool() {
+  if (!DATABASE_URL) {
+    console.warn('DATABASE_URL not set. API will error until it is configured.');
+    throw new Error('DATABASE_URL is required');
+  }
+  if (!pool) {
+    console.log('Creating new PostgreSQL connection pool...');
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      max: 20, // Max number of clients in the pool
+      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+      connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+    });
+
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client', err);
+      ingest('vercel-errors', [{ type: 'db-pool-error', error: String(err), timestamp: new Date().toISOString() }]);
+    });
+  }
+  return pool;
 }
 
 // Create a new registry for custom metrics
@@ -196,22 +405,16 @@ export function createApp() {
     app.use(cookieParser(cookieSecret));
     console.log('Cookie-parser middleware configured');
 
-    // Database setup
-    const DATABASE_URL = process.env.DATABASE_URL;
-    if (!DATABASE_URL) {
-      console.warn('DATABASE_URL not set. API will error until it is configured.');
-      throw new Error('DATABASE_URL is required');
-    }
-    
-    const pool = new Pool({
-      connectionString: DATABASE_URL
-    });
+    // Database setup - Removed direct pool creation
+    // Moved to getPool() function
 
     // Schema management
-    async function ensureSchema() {
+    async function ensureSchema() { // Export ensureSchema
+      console.log('Ensuring database schema is up-to-date...');
+      const currentPool = getPool(); // Use the singleton pool
       try {
         // Users table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
@@ -224,7 +427,7 @@ export function createApp() {
         `);
 
         // Doctors table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS doctors (
             id SERIAL PRIMARY KEY,
             code TEXT UNIQUE NOT NULL,
@@ -236,7 +439,7 @@ export function createApp() {
         `);
 
         // Products table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS products (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
@@ -253,7 +456,7 @@ export function createApp() {
         `);
 
         // Investments table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS investments (
             id SERIAL PRIMARY KEY,
             doctor_id INTEGER REFERENCES doctors(id),
@@ -272,7 +475,7 @@ export function createApp() {
         `);
 
         // Bills table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS bills (
             id SERIAL PRIMARY KEY,
             merchant TEXT,
@@ -288,7 +491,7 @@ export function createApp() {
         `);
 
         // Pharmacies table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS pharmacies (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
@@ -306,7 +509,7 @@ export function createApp() {
         `);
 
         // Activity logs table
-        await pool.query(`
+        await currentPool.query(`
           CREATE TABLE IF NOT EXISTS activity_logs (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id),
@@ -320,11 +523,11 @@ export function createApp() {
         `);
 
         // Insert default users if they don't exist
-        const adminExistsRes = await pool.query('SELECT 1 FROM users WHERE email = $1', ['admin@aarezhealth.com']);
+        const adminExistsRes = await currentPool.query('SELECT 1 FROM users WHERE email = $1', ['admin@aarezhealth.com']);
         if (adminExistsRes.rowCount === 0) {
           console.log('Creating default admin user via ensureSchema...');
           const password_hash = await bcrypt.hash('admin123', 10);
-          await pool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', ['Umbra', 'admin@aarezhealth.com', password_hash, 'admin']);
+          await currentPool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', ['Umbra', 'admin@aarezhealth.com', password_hash, 'admin']);
           console.log('Default admin user created: admin@aarezhealth.com / admin123');
         }
 
@@ -335,19 +538,19 @@ export function createApp() {
         ];
 
         for (const u of extraUsers) {
-          const userExistsRes = await pool.query('SELECT 1 FROM users WHERE email = $1', [u.email]);
+          const userExistsRes = await currentPool.query('SELECT 1 FROM users WHERE email = $1', [u.email]);
           if (userExistsRes.rowCount === 0) {
             const password_hash = await bcrypt.hash(u.password, 10);
-            await pool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', [u.name, u.email, password_hash, u.role]);
+            await currentPool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', [u.name, u.email, password_hash, u.role]);
             console.log(`Default user created via ensureSchema: ${u.email} / ${u.password}`);
           }
         }
 
-        const mrExistsRes = await pool.query('SELECT 1 FROM users WHERE email = $1', ['mr@aarezhealth.com']);
+        const mrExistsRes = await currentPool.query('SELECT 1 FROM users WHERE email = $1', ['mr@aarezhealth.com']);
         if (mrExistsRes.rowCount === 0) {
           console.log('Creating default MR user via ensureSchema...');
           const password_hash = await bcrypt.hash('mr123', 10);
-          await pool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', ['MR User', 'mr@aarezhealth.com', password_hash, 'mr']);
+          await currentPool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)', ['MR User', 'mr@aarezhealth.com', password_hash, 'mr']);
           console.log('Default MR user created: mr@aarezhealth.com / mr123');
         }
       } catch (err) {
@@ -357,10 +560,11 @@ export function createApp() {
       }
     }
 
-    // Run ensureSchema if enabled
-    if (process.env.MIGRATE_ON_START !== 'false') {
-      ensureSchema().catch(err => console.error('Auto-migration error', err));
-    }
+    // Run ensureSchema if enabled - This will be handled in api/index.ts for Vercel
+    // and api-local/server.ts for local development
+    // if (process.env.MIGRATE_ON_START !== 'false') {
+    //   ensureSchema().catch(err => console.error('Auto-migration error', err));
+    // }
 
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -448,8 +652,9 @@ export function createApp() {
     app.get('/api/health', async (req, res) => {
       console.log('Health endpoint hit');
       try {
+        const currentPool = getPool(); // Use the singleton pool
         // Test DB connection for health
-        await pool.query('SELECT 1');
+        await currentPool.query('SELECT 1');
         const healthInfo = {
           ok: true,
           timestamp: new Date().toISOString(),
@@ -471,6 +676,19 @@ export function createApp() {
       }
     });
 
+    // Add new migration endpoint
+    app.get('/api/migrate', async (req, res) => {
+      console.log('Migration endpoint hit');
+      try {
+        await ensureSchema();
+        res.json({ success: true, message: 'Schema migrated successfully' });
+      } catch (error: any) {
+        console.error('Migration failed:', error);
+        ingest('vercel-errors', [{ type: 'manual-migrate', error: String(error), timestamp: new Date().toISOString() }]);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     // Business routes
     console.log('Adding business routes...');
 
@@ -480,7 +698,7 @@ export function createApp() {
         const { name, email, password } = req.body;
         if (!name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
         const password_hash = await bcrypt.hash(password, 10);
-        const result = await pool.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role', [name, email, password_hash, 'user']);
+        const result = await getPool().query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role', [name, email, password_hash, 'user']);
         const user = result.rows[0];
         setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
         res.json(user);
@@ -495,25 +713,98 @@ export function createApp() {
     app.post('/api/auth/login', async (req, res) => {
       try {
         const { email, password } = req.body;
-        const result = await pool.query('SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1', [email]);
-        const user = result.rows[0];
-        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-        const ok = await bcrypt.compare(password, user.password_hash);
-        if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
-        setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
-        const { password_hash, ...safe } = user;
-        res.json(safe);
+        
+        // Log incoming login attempt
+        console.log('Login attempt:', { email });
+        
+        // Detailed database query logging
+        try {
+          const result = await trackQueryPerformance('login_query', () => 
+            getPool().query('SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1', [email])
+          );
+          
+          const user = result.rows[0];
+          
+          // Log user lookup result
+          console.log('User lookup result:', { 
+            userFound: !!user, 
+            email 
+          });
+          
+          if (!user) {
+            // Log failed login attempt
+            logEnhancedError(new Error('User not found'), {
+              route: '/api/auth/login',
+              method: 'POST',
+              input: { email }
+            });
+            
+            return res.status(401).json({ error: 'Invalid credentials' });
+          }
+          
+          const ok = await bcrypt.compare(password, user.password_hash);
+          
+          // Log password comparison result
+          console.log('Password comparison result:', { 
+            passwordMatch: ok, 
+            email 
+          });
+          
+          if (!ok) {
+            // Log failed password attempt
+            logEnhancedError(new Error('Invalid password'), {
+              route: '/api/auth/login',
+              method: 'POST',
+              input: { email }
+            });
+            
+            return res.status(401).json({ error: 'Invalid credentials' });
+          }
+          
+          // Successful login
+          setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
+          
+          // Log successful login
+          logUserActivity(
+            user.id, 
+            'login', 
+            'user', 
+            user.id, 
+            { email }
+          );
+          
+          const { password_hash, ...safe } = user;
+          res.json(safe);
+        } catch (queryError) {
+          // Log database query error
+          console.error('Login database query error:', queryError);
+          
+          logEnhancedError(queryError, {
+            route: '/api/auth/login',
+            method: 'POST',
+            input: { email }
+          });
+          
+          res.status(500).json({ error: 'Database error during login' });
+        }
       } catch (e) {
-        console.error('Login error:', e);
-        ingest('vercel-errors', [{ type: 'auth-login', error: String(e), timestamp: new Date().toISOString() }]);
-        res.status(500).json({ error: 'Login failed' });
+        // Catch-all error logging
+        console.error('Unexpected login error:', e);
+        
+        logEnhancedError(e, {
+          route: '/api/auth/login',
+          method: 'POST',
+          input: { email: req.body.email }
+        });
+        
+        res.status(500).json({ error: 'Unexpected error during login' });
       }
     });
 
     app.get('/api/auth/me', requireAuth, async (req: any, res) => {
       try {
         const { id } = req.user;
-        const result = await pool.query('SELECT id, name, email, role FROM users WHERE id = $1', [id]);
+        const result = await getPool().query('SELECT id, name, email, role FROM users WHERE id = $1', [id]);
         res.json(result.rows[0] || null);
       } catch (e) {
         console.error('Me error:', e);
@@ -529,7 +820,7 @@ export function createApp() {
     // Doctors routes
     app.get('/api/doctors', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM doctors ORDER BY created_at DESC LIMIT 100');
+        const result = await getPool().query('SELECT * FROM doctors ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
       } catch (e) {
         console.error('Doctors get error:', e);
@@ -539,12 +830,37 @@ export function createApp() {
 
     app.post('/api/doctors', requireAuth, async (req: any, res) => {
       try {
-        const { code, name, specialty } = req.body;
-        const result = await pool.query('INSERT INTO doctors (code, name, specialty) VALUES ($1, $2, $3) RETURNING *', [code, name, specialty]);
+        const { code = '', name = '', specialty = '' } = req.body;
+        const result = await trackQueryPerformance('create_doctor', () => 
+          getPool().query('INSERT INTO doctors (code, name, specialty) VALUES ($1, $2, $3) RETURNING *', [code, name, specialty])
+        );
+        
+        // Log user activity for doctor creation
+        await logUserActivity(
+          req.user.id, 
+          'create', 
+          'doctor', 
+          result.rows[0].id, 
+          { code, name, specialty }
+        );
+        
         res.json(result.rows[0]);
       } catch (e: any) {
-        if (String(e?.message || '').includes('duplicate key')) return res.status(409).json({ error: 'Doctor code exists' });
-        console.error('Doctors post error:', e);
+        // Use enhanced error logging
+        const code = req.body.code || '';
+        const name = req.body.name || '';
+        const specialty = req.body.specialty || '';
+        
+        logEnhancedError(e, {
+          route: '/api/doctors',
+          method: 'POST',
+          input: { code, name, specialty }
+        }, req.user?.id);
+        
+        if (String(e?.message || '').includes('duplicate key')) {
+          return res.status(409).json({ error: 'Doctor code exists' });
+        }
+        
         res.status(500).json({ error: 'Failed to create doctor' });
       }
     });
@@ -552,7 +868,7 @@ export function createApp() {
     // Products routes
     app.get('/api/products', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC LIMIT 200');
+        const result = await getPool().query('SELECT * FROM products ORDER BY created_at DESC LIMIT 200');
         res.json(result.rows);
       } catch (e) {
         console.error('Products get error:', e);
@@ -563,7 +879,7 @@ export function createApp() {
     app.post('/api/products', requireAuth, async (req: any, res) => {
       try {
         const { name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip } = req.body;
-        const result = await pool.query('INSERT INTO products (name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *', [name, category, status || 'Active', price || 0, product_type || null, packaging_type || null, strips_per_box || null, units_per_strip || null]);
+        const result = await getPool().query('INSERT INTO products (name, category, status, price, product_type, packaging_type, strips_per_box, units_per_strip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *', [name, category, status || 'Active', price || 0, product_type || null, packaging_type || null, strips_per_box || null, units_per_strip || null]);
         res.json(result.rows[0]);
       } catch (e) {
         console.error('Products post error:', e);
@@ -574,7 +890,7 @@ export function createApp() {
     // Investments routes
     app.get('/api/investments', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 200');
+        const result = await getPool().query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 200');
         res.json(result.rows);
       } catch (e) {
         console.error('Investments get error:', e);
@@ -584,18 +900,52 @@ export function createApp() {
 
     app.post('/api/investments', requireAuth, async (req: any, res) => {
       try {
-        const { doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes } = req.body;
-        const result = await pool.query('INSERT INTO investments (doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *', [doctor_id || null, doctor_code || null, doctor_name || null, amount, investment_date, expected_returns || null, actual_returns || null, preferences || null, notes || null, req.user.id]);
+        const { doctor_id = null, doctor_code = null, doctor_name = null, amount = 0, investment_date = new Date().toISOString(), expected_returns = null, actual_returns = null, preferences = null, notes = null } = req.body;
+        
+        const result = await trackQueryPerformance('create_investment', () => 
+          getPool().query('INSERT INTO investments (doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *', [doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, req.user.id])
+        );
+        
+        // Log user activity for investment creation
+        await logUserActivity(
+          req.user.id, 
+          'create', 
+          'investment', 
+          result.rows[0].id, 
+          { 
+            amount, 
+            doctor_code, 
+            investment_date, 
+            expected_returns 
+          }
+        );
+        
         res.json(result.rows[0]);
       } catch (e) {
-        console.error('Investments post error:', e);
+        // Use enhanced error logging
+        const doctor_id = req.body.doctor_id || null;
+        const doctor_code = req.body.doctor_code || null;
+        const amount = req.body.amount || 0;
+        const investment_date = req.body.investment_date || new Date().toISOString();
+        
+        logEnhancedError(e, {
+          route: '/api/investments',
+          method: 'POST',
+          input: { 
+            doctor_id, 
+            doctor_code, 
+            amount, 
+            investment_date 
+          }
+        }, req.user?.id);
+        
         res.status(500).json({ error: 'Failed to create investment' });
       }
     });
 
     app.get('/api/investments/summary', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT COALESCE(SUM(amount),0)::numeric AS total_investments, COALESCE(SUM(expected_returns),0)::numeric AS total_expected, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments');
+        const result = await getPool().query('SELECT COALESCE(SUM(amount),0)::numeric AS total_investments, COALESCE(SUM(expected_returns),0)::numeric AS total_expected, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments');
         const r = result.rows[0] || { total_investments: 0, total_expected: 0, total_actual: 0 };
         res.json({ totalInvestments: Number(r.total_investments), totalExpected: Number(r.total_expected), totalActual: Number(r.total_actual) });
       } catch (e) {
@@ -606,7 +956,7 @@ export function createApp() {
 
     app.get('/api/investments/summary-by-month', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT to_char(investment_date, \'YYYY-MM\') AS ym, COALESCE(SUM(amount),0)::numeric AS total_amount, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments GROUP BY ym ORDER BY ym');
+        const result = await getPool().query('SELECT to_char(investment_date, \'YYYY-MM\') AS ym, COALESCE(SUM(amount),0)::numeric AS total_amount, COALESCE(SUM(actual_returns),0)::numeric AS total_actual FROM investments GROUP BY ym ORDER BY ym');
         const rows = result.rows;
         const labels = rows.map((r: any) => r.ym);
         const amounts = rows.map((r: any) => Number(r.total_amount));
@@ -620,10 +970,10 @@ export function createApp() {
 
     app.get('/api/dashboard/stats', requireAuth, async (req: any, res) => {
       try {
-        const investmentResult = await pool.query('SELECT COUNT(*)::int as count FROM investments');
-        const doctorResult = await pool.query('SELECT COUNT(DISTINCT doctor_code)::int as count FROM investments WHERE doctor_code IS NOT NULL');
-        const productResult = await pool.query('SELECT COUNT(*)::int as count FROM products');
-        const roiResult = await pool.query('SELECT CASE WHEN SUM(amount) > 0 THEN (SUM(COALESCE(actual_returns, 0)) / SUM(amount) * 100)::numeric ELSE 0 END as roi FROM investments');
+        const investmentResult = await getPool().query('SELECT COUNT(*)::int as count FROM investments');
+        const doctorResult = await getPool().query('SELECT COUNT(DISTINCT doctor_code)::int as count FROM investments WHERE doctor_code IS NOT NULL');
+        const productResult = await getPool().query('SELECT COUNT(*)::int as count FROM products');
+        const roiResult = await getPool().query('SELECT CASE WHEN SUM(amount) > 0 THEN (SUM(COALESCE(actual_returns, 0)) / SUM(amount) * 100)::numeric ELSE 0 END as roi FROM investments');
         
         const investmentCount = investmentResult.rows[0].count;
         const doctorCount = doctorResult.rows[0].count;
@@ -644,7 +994,7 @@ export function createApp() {
 
     app.get('/api/investments/recent', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 10');
+        const result = await getPool().query('SELECT * FROM investments ORDER BY created_at DESC LIMIT 10');
         res.json(result.rows);
       } catch (e) {
         console.error('Recent investments error:', e);
@@ -655,7 +1005,7 @@ export function createApp() {
     // Bills routes
     app.get('/api/bills', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM bills ORDER BY created_at DESC LIMIT 100');
+        const result = await getPool().query('SELECT * FROM bills ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
       } catch (e) {
         console.error('Bills get error:', e);
@@ -666,7 +1016,7 @@ export function createApp() {
     app.post('/api/bills', requireAuth, async (req: any, res) => {
       try {
         const { merchant, bill_date, total, items, raw_text, extracted } = req.body;
-        const result = await pool.query('INSERT INTO bills (merchant, bill_date, total, items, raw_text, extracted, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', [merchant || null, bill_date || null, total || 0, items || [], raw_text || null, extracted || {}, req.user.id]);
+        const result = await getPool().query('INSERT INTO bills (merchant, bill_date, total, items, raw_text, extracted, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', [merchant || null, bill_date || null, total || 0, items || [], raw_text || null, extracted || {}, req.user.id]);
         res.json(result.rows[0]);
       } catch (e) {
         console.error('Bills post error:', e);
@@ -677,7 +1027,7 @@ export function createApp() {
     // Pharmacies routes (basic, extend as needed)
     app.get('/api/pharmacies', requireAuth, async (req: any, res) => {
       try {
-        const result = await pool.query('SELECT * FROM pharmacies ORDER BY created_at DESC LIMIT 100');
+        const result = await getPool().query('SELECT * FROM pharmacies ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
       } catch (e) {
         console.error('Pharmacies get error:', e);
@@ -688,7 +1038,7 @@ export function createApp() {
     app.post('/api/pharmacies', requireAuth, async (req: any, res) => {
       try {
         const { name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied } = req.body;
-        const result = await pool.query('INSERT INTO pharmacies (name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [name, city, address, product_with_count_given || [], date_given, current_stock_owns || [], due_date_amount, scheme_applied || null, req.user.id]);
+        const result = await getPool().query('INSERT INTO pharmacies (name, city, address, product_with_count_given, date_given, current_stock_owns, due_date_amount, scheme_applied, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [name, city, address, product_with_count_given || [], date_given, current_stock_owns || [], due_date_amount, scheme_applied || null, req.user.id]);
         res.json(result.rows[0]);
       } catch (e) {
         console.error('Pharmacies post error:', e);
@@ -711,3 +1061,5 @@ export function createApp() {
     throw error;
   }
 }
+
+export { createApp, ensureSchema };

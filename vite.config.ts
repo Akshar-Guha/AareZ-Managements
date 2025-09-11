@@ -7,51 +7,37 @@ export default defineConfig(({ command, mode }) => {
   
   return {
     plugins: [react()],
+    base: '/',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
     },
     server: {
-      host: true, // This makes it accessible on your network IP
-      port: 5173, // Ensure this matches your application's port if it's different
+      host: true,
+      port: 5173,
       strictPort: true,
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3100',
-          changeOrigin: true,
-          secure: false
-        }
-      }
     },
     build: {
       outDir: 'dist',
-      sourcemap: !isProduction,
-      minify: isProduction,
-      // Optimize bundle size
       rollupOptions: {
         output: {
           manualChunks: {
             vendor: ['react', 'react-dom', 'react-router-dom'],
             ui: ['@headlessui/react', '@heroicons/react', 'clsx', 'sonner'],
             charts: ['chart.js']
-          }
+          },
+          // Ensure correct file naming
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]'
         }
       }
     },
-    // Important for SPA routing in production
     preview: {
       port: 5173,
       strictPort: true,
-      host: true,
-      // Handle SPA routing
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3100',
-          changeOrigin: true,
-          secure: false
-        }
-      }
+      host: true
     }
   };
 });

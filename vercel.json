@@ -1,31 +1,36 @@
 {
-  "buildCommand": "npm run build",
+  "version": 2,
+  "buildCommand": "node vercel-build.js",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.ts": {
-      "runtime": "@vercel/node@3.0.0",
-      "maxDuration": 10,
-      "node": "22.x"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index"
+      "dest": "/dist/index.js"
     },
     {
-      "src": "^/assets/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "src": "/assets/(.*\\.js)",
+      "headers": {
+        "Content-Type": "application/javascript"
+      },
       "dest": "/assets/$1"
     },
     {
-      "src": "^/.*\\.(js|css|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
-      "dest": "/$0"
+      "src": "/assets/(.*\\.css)",
+      "headers": {
+        "Content-Type": "text/css"
+      },
+      "dest": "/assets/$1"
     },
     {
-      "src": "^/(.*)",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs22.x",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }

@@ -6,21 +6,10 @@
   "executionArgs": {
     "projectName": "Manager",
     "projectPath": "S:\\projects\\Manager",
-    "testIds": [
-      "TC001",
-      "TC002",
-      "TC003",
-      "TC004",
-      "TC005",
-      "TC009",
-      "TC010",
-      "TC015",
-      "TC016",
-      "TC017"
-    ],
-    "additionalInstruction": "Focus on the backend aspects of these test cases, specifically validating API responses, database interactions, error handling middleware, input validation, password policies, RBAC, and Swagger documentation. For tests requiring authentication, simulate an authenticated state. For admin-specific actions, simulate an admin user.",
+    "testIds": [],
+    "additionalInstruction": "Run comprehensive tests for the application",
     "envs": {
-      "API_KEY": "sk-user-YgonlbJEFuYQVglVeQDALpixdELdir7qqHYy3f24zL8kVAtIiNfBthnvMh-hW7jFAsCVf9JGfCBXnFFw1IWSY-xGFO7H68NQCiI1cEdGMXzAip0c76q4qk4eoM6A0zm2kKM"
+      "API_KEY": ""
     }
   }
 }

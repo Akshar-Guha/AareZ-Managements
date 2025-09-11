@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { InvestmentCard } from '@/components/InvestmentCard';
 import { StatsCard } from '@/components/StatsCard';
+import { CurrencyDollarIcon, CubeIcon, BuildingStorefrontIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 export default function MRDashboard() {
   const navigate = useNavigate();
@@ -59,6 +60,21 @@ export default function MRDashboard() {
     }
   };
 
+  const handleViewInvestment = (investment: any) => {
+    // Implement view logic
+    console.log('View investment:', investment);
+  };
+
+  const handleEditInvestment = (investment: any) => {
+    // Implement edit logic
+    console.log('Edit investment:', investment);
+  };
+
+  const handleDeleteInvestment = (id: number) => {
+    // Implement delete logic
+    console.log('Delete investment:', id);
+  };
+
   if (loading || isLoading) {
     return <div className="h-screen grid place-items-center">Loading MR Dashboard...</div>;
   }
@@ -72,10 +88,30 @@ export default function MRDashboard() {
       <h1 className="text-3xl font-bold text-gray-900 mb-8">MR Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard title="Total Revenue" value={`$${dashboardData.totalRevenue.toLocaleString()}`} />
-        <StatsCard title="Total Investments" value={`$${dashboardData.totalInvestments.toLocaleString()}`} />
-        <StatsCard title="Total Products" value={dashboardData.totalProducts.toLocaleString()} />
-        <StatsCard title="Total Pharmacies" value={dashboardData.totalPharmacies.toLocaleString()} />
+        <StatsCard 
+          icon={<CurrencyDollarIcon className="h-5 w-5" />} 
+          title="Total Revenue" 
+          value={`$${dashboardData.totalRevenue.toLocaleString()}`} 
+          description="Total revenue generated" 
+        />
+        <StatsCard 
+          icon={<ChartBarIcon className="h-5 w-5" />} 
+          title="Total Investments" 
+          value={`$${dashboardData.totalInvestments.toLocaleString()}`} 
+          description="Total investments made" 
+        />
+        <StatsCard 
+          icon={<CubeIcon className="h-5 w-5" />} 
+          title="Total Products" 
+          value={dashboardData.totalProducts.toLocaleString()} 
+          description="Number of unique products" 
+        />
+        <StatsCard 
+          icon={<BuildingStorefrontIcon className="h-5 w-5" />} 
+          title="Total Pharmacies" 
+          value={dashboardData.totalPharmacies.toLocaleString()} 
+          description="Number of pharmacies" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -84,7 +120,13 @@ export default function MRDashboard() {
           {dashboardData.recentInvestments.length > 0 ? (
             <div className="space-y-4">
               {dashboardData.recentInvestments.map((investment: any) => (
-                <InvestmentCard key={investment.id} investment={investment} />
+                <InvestmentCard 
+                  key={investment.id} 
+                  investment={investment} 
+                  onView={handleViewInvestment}
+                  onEdit={handleEditInvestment}
+                  onDelete={handleDeleteInvestment}
+                />
               ))}
             </div>
           ) : (
