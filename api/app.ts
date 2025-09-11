@@ -1061,5 +1061,3 @@ export function createApp() {
     throw error;
   }
 }
-
-export { createApp, ensureSchema };
