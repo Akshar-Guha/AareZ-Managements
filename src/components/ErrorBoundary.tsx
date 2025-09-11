@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { axiomLogger } from '../lib/axiomLogger';
+import Logger from '../lib/logger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -23,7 +23,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    axiomLogger.error('Unhandled React Error', {
+    Logger.error('Unhandled React Error', {
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
