@@ -1,25 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "node vercel-build.js",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/dist/api/index.js"
-    },
-    {
-      "src": "/assets/(.*\\.js)",
-      "headers": {
-        "Content-Type": "application/javascript"
-      },
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/assets/(.*\\.css)",
-      "headers": {
-        "Content-Type": "text/css"
-      },
-      "dest": "/assets/$1"
     },
     {
       "src": "/(.*)",
