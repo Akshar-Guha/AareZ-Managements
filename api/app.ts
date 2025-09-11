@@ -5,6 +5,7 @@ import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
+import bcrypt from 'bcrypt';
 import Logger from '../src/lib/logger';
 
 // Removed Axiom client initialization and related functions
@@ -177,6 +178,26 @@ const totalRequests = new promClient.Counter({
   help: 'Total number of requests processed',
   labelNames: ['method', 'route', 'code'],
   registers: [register]
+});
+
+// Type assertion for result variables
+const assertResult = <T>(result: unknown): T => result as T;
+
+// Global error and unhandled rejection handlers
+process.on('uncaughtException', (error) => {
+  Logger.error('Uncaught Exception', {
+    message: error.message,
+    stack: error.stack
+  });
+  // Optionally exit the process in a production environment
+  // process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  Logger.error('Unhandled Rejection', {
+    reason: String(reason),
+    promise: String(promise)
+  });
 });
 
 export function createApp() {
@@ -959,20 +980,3 @@ export function createApp() {
     throw error;
   }
 }
-
-// Global error and unhandled rejection handlers
-process.on('uncaughtException', (error) => {
-  Logger.error('Uncaught Exception', {
-    message: error.message,
-    stack: error.stack
-  });
-  // Optionally exit the process in a production environment
-  // process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  Logger.error('Unhandled Rejection', {
-    reason: String(reason),
-    promise: String(promise)
-  });
-});
