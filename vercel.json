@@ -9,19 +9,21 @@
       "dest": "api/index.ts"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/src/(.*)",
+      "dest": "/src/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
   ],
   "env": {
-    "VITE_AXIOM_TOKEN": "@axiom_token",
-    "VITE_AXIOM_DATASET": "aarez-mgnmt-logs",
-    "VITE_AXIOM_ORG_ID": "@axiom_org_id",
-    "AXIOM_TOKEN": "@axiom_token",
-    "AXIOM_ORG_ID": "@axiom_org_id",
-    "AXIOM_DATASET": "aarez-mgnmt-logs",
-    "NODE_OPTIONS": "--enable-source-maps",
-    "LOG_LEVEL": "info"
+    "LOG_LEVEL": "info",
+    "CORS_ORIGIN": "http://localhost:5173,https://aarez-mgnmt.vercel.app"
   },
   "regions": ["iad1"],
   "framework": "vite"

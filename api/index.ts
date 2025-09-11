@@ -19,12 +19,8 @@ async function getApp() {
         console.log('Schema migration completed on cold start.');
       } catch (err) {
         console.error('Schema migration failed on cold start:', err);
-        // Log to Axiom for tracking
-        console.log(JSON.stringify({
-          type: 'cold-start-migration-error',
-          error: err instanceof Error ? err.message : String(err),
-          timestamp: new Date().toISOString()
-        }));
+        // Standard console error for tracking
+        console.error('Cold-start schema migration error:', err);
       }
     }
     
@@ -48,14 +44,13 @@ export default async function handler(req: Request, res: Response) {
   } catch (error) {
     console.error('Serverless handler error:', error);
     
-    // Log detailed error
-    console.log(JSON.stringify({
-      type: 'serverless-handler-error',
-      error: error instanceof Error ? error.message : String(error),
+    // Standard console error for tracking
+    console.error('Serverless handler detailed error:', {
+      message: error instanceof Error ? error.message : String(error),
       method: req.method,
       url: req.url,
       timestamp: new Date().toISOString()
-    }));
+    });
     
     res.status(500).json({ 
       error: 'Internal Server Error', 

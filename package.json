@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:server\" \"vite\"",
     "dev:server": "tsx api-local/server.ts",
     "build": "vite build && tsc --project tsconfig.json",
-    "vercel-build": "node vercel-build.js",
+    "vercel-build": "npm run build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 5173 --strictPort",
     "lint": "eslint . || true",
@@ -32,10 +32,10 @@
     "axiom:test-log": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs tsx scripts/test-axiom-logging.ts",
     "axiom:verify": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs node scripts/verify-axiom.js",
     "axiom:verify-config": "echo \"Axiom Token: ${VITE_AXIOM_TOKEN:0:5}... Dataset: ${VITE_AXIOM_DATASET}\"",
-    "axiom:config:check": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs tsx scripts/axiom-config-check.ts"
+    "axiom:config:check": "cross-env VITE_AXIOM_TOKEN=xaat-5eff2e24-8c90-43e4-9299-511d813911dd VITE_AXIOM_DATASET=aarez-mgnmt-logs tsx scripts/axiom-config-check.ts",
+    "postinstall": "mkdir -p logs /var/log/aarez-mgnmt"
   },
   "dependencies": {
-    "@axiomhq/js": "^1.3.1",
     "@headlessui/react": "^2.2.7",
     "@heroicons/react": "^2.2.0",
     "@neondatabase/serverless": "^0.9.5",

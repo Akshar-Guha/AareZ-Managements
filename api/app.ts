@@ -3,71 +3,11 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import promBundle from 'express-prom-bundle';
 import * as promClient from 'prom-client';
-import { Axiom } from '@axiomhq/js';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
+import Logger from '../src/lib/logger';
 
-// Safer Axiom client initialization
-function createAxiomClient() {
-  // Log all environment variables for debugging
-  console.log('Axiom Environment Variables:', {
-    AXIOM_TOKEN: process.env.AXIOM_TOKEN ? 'Set' : 'Not Set',
-    AXIOM_ORG_ID: process.env.AXIOM_ORG_ID ? 'Set' : 'Not Set',
-    AXIOM_DATASET: process.env.AXIOM_DATASET || 'aarez-mgnmt-logs'
-  });
-
-  const axiomToken = process.env.AXIOM_TOKEN;
-  const axiomOrgId = process.env.AXIOM_ORG_ID;
-  const axiomDataset = process.env.AXIOM_DATASET || 'aarez-mgnmt-logs';
-
-  if (!axiomToken || !axiomOrgId) {
-    console.warn('Axiom logging is disabled: Missing token or org ID');
-    
-    // Log detailed error for debugging
-    console.error(JSON.stringify({
-      type: 'axiom-initialization-error',
-      message: 'Axiom client initialization failed',
-      details: {
-        tokenMissing: !axiomToken,
-        orgIdMissing: !axiomOrgId
-      },
-      timestamp: new Date().toISOString()
-    }));
-
-    return null;
-  }
-
-  try {
-    const client = new Axiom({
-      token: axiomToken,
-      orgId: axiomOrgId
-    });
-
-    // Log successful client initialization
-    console.log(JSON.stringify({
-      type: 'axiom-initialization',
-      message: 'Axiom client successfully initialized',
-      timestamp: new Date().toISOString()
-    }));
-
-    return client;
-  } catch (error) {
-    // Log detailed error information
-    console.error(JSON.stringify({
-      type: 'axiom-client-creation-error',
-      message: 'Failed to create Axiom client',
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      timestamp: new Date().toISOString()
-    }));
-
-    return null;
-  }
-}
-
-// Create Axiom client
-const axiomClient = createAxiomClient();
+// Removed Axiom client initialization and related functions
 
 /**
  * Safe logging function with multiple fallback mechanisms
@@ -75,30 +15,6 @@ const axiomClient = createAxiomClient();
 function ingest(dataset: string, data: unknown[]): void {
   // Always log to console for local debugging
   console.log(`Logging to dataset: ${dataset}`, JSON.stringify(data, null, 2));
-
-  // If Axiom client is not available, exit early
-  if (!axiomClient) {
-    console.warn('Axiom client not initialized. Logging disabled.');
-    return;
-  }
-
-  // Attempt to ingest data
-  try {
-    const maybePromise = axiomClient.ingest(dataset, data);
-    
-    // Explicitly check for promise-like behavior
-    if (maybePromise != null && typeof (maybePromise as Promise<any>).then === 'function') {
-      (maybePromise as Promise<any>)
-        .then(() => {
-          console.log(`Successfully logged to Axiom dataset: ${dataset}`);
-        })
-        .catch((error) => {
-          console.error(`Axiom ingest error in ${dataset}:`, error);
-        });
-    }
-  } catch (syncError) {
-    console.error('Synchronous Axiom logging error:', syncError);
-  }
 }
 
 /**
@@ -123,16 +39,6 @@ async function logUserActivity(
       entityId, 
       details 
     });
-
-    // Ingest to Axiom for long-term tracking
-    ingest('user-activities', [{
-      userId,
-      action,
-      entityType,
-      entityId,
-      details,
-      timestamp: new Date().toISOString()
-    }]);
 
     // Optionally log to database activity_logs table
     if (userId) {
@@ -172,9 +78,6 @@ function logEnhancedError(
 
   // Log to console for immediate visibility
   console.error('Enhanced Error Log:', errorLog);
-
-  // Ingest to Axiom for centralized error tracking
-  ingest('enhanced-errors', [errorLog]);
 }
 
 // Add a new performance logging function
@@ -185,9 +88,6 @@ function logPerformanceMetric(metricName: string, duration: number, additionalCo
     timestamp: new Date().toISOString(),
     ...additionalContext
   };
-
-  // Log to Axiom
-  ingest('performance-metrics', [performanceLog]);
 
   // Log to console for local debugging
   console.log(`Performance Metric: ${metricName}`, performanceLog);
@@ -247,7 +147,6 @@ function getPool() {
 
     pool.on('error', (err) => {
       console.error('Unexpected error on idle client', err);
-      ingest('vercel-errors', [{ type: 'db-pool-error', error: String(err), timestamp: new Date().toISOString() }]);
     });
   }
   return pool;
@@ -298,16 +197,14 @@ export function createApp() {
     app.use((req, res, next) => {
       const startTime = Date.now();
       
-      // Log request details to Axiom
-      ingest('vercel-requests', [{
-        method: req.method,
-        path: req.path,
+      // Log request details to console
+      console.log(`Request: ${req.method} ${req.path}`, {
         timestamp: new Date().toISOString(),
         headers: {
           userAgent: req.get('User-Agent'),
           host: req.get('Host')
         }
-      }]);
+      });
 
       // Track active requests and timing
       activeRequests.inc();
@@ -317,14 +214,10 @@ export function createApp() {
       res.on('finish', () => {
         const duration = Date.now() - startTime;
         
-        // Log response details to Axiom
-        ingest('vercel-responses', [{
-          method: req.method,
-          path: req.path,
-          statusCode: res.statusCode,
-          duration: duration,
+        // Log response details to console
+        console.log(`Response: ${req.method} ${req.path} - Status: ${res.statusCode} - Duration: ${duration}ms`, {
           timestamp: new Date().toISOString()
-        }]);
+        });
 
         end({
           method: req.method,
@@ -635,8 +528,8 @@ export function createApp() {
           environment: process.env.NODE_ENV
         };
         
-        // Log diagnostics to Axiom
-        ingest('vercel-diagnostics', [diagnostics]);
+        // Log diagnostics to console
+        console.log('Vercel Diagnostics:', diagnostics);
         
         res.json(diagnostics);
       } catch (error) {
@@ -672,13 +565,12 @@ export function createApp() {
           dbConnected: true
         };
         
-        // Log health check to Axiom
-        ingest('vercel-health-checks', [healthInfo]);
+        // Log health check to console
+        console.log('Vercel Health Check:', healthInfo);
         
         res.json(healthInfo);
       } catch (err) {
         console.error('Health check DB error:', err);
-        ingest('vercel-errors', [{ type: 'health-db', error: String(err), timestamp: new Date().toISOString() }]);
         res.status(500).json({ ok: false, error: 'DB connection failed' });
       }
     });
@@ -691,7 +583,6 @@ export function createApp() {
         res.json({ success: true, message: 'Schema migrated successfully' });
       } catch (error: any) {
         console.error('Migration failed:', error);
-        ingest('vercel-errors', [{ type: 'manual-migrate', error: String(error), timestamp: new Date().toISOString() }]);
         res.status(500).json({ success: false, error: error.message });
       }
     });
@@ -1071,22 +962,17 @@ export function createApp() {
 
 // Global error and unhandled rejection handlers
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  ingest('vercel-critical-errors', [{
-    type: 'uncaughtException',
-    error: error.message,
-    stack: error.stack,
-    timestamp: new Date().toISOString()
-  }]);
+  Logger.error('Uncaught Exception', {
+    message: error.message,
+    stack: error.stack
+  });
   // Optionally exit the process in a production environment
   // process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  ingest('vercel-critical-errors', [{
-    type: 'unhandledRejection',
+  Logger.error('Unhandled Rejection', {
     reason: String(reason),
-    timestamp: new Date().toISOString()
-  }]);
+    promise: String(promise)
+  });
 });
