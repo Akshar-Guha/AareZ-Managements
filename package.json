@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:server\" \"vite\"",
     "dev:server": "tsx api-local/server.ts",
-    "build": "vite build && tsc --project tsconfig.json",
-    "vercel-build": "npm run build && npm run migrate:latest",
+    "build": "vite build",
+    "vercel-build": "npm run build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 5173 --strictPort",
     "lint": "eslint . || true",

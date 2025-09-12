@@ -2,39 +2,32 @@
 const getApiBaseUrl = () => {
   console.group('API Base URL Determination');
   
-  // Use environment variable for base URL with robust detection
-  const envBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   const hasWindow = typeof window !== 'undefined';
   const windowHostname = hasWindow ? window.location.hostname : '';
   const windowOrigin = hasWindow ? window.location.origin : '';
 
   // Determine if we are running on localhost
-  const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(windowHostname) || /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(windowHostname);
+  const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(windowHostname) || 
+                     /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(windowHostname);
 
-  // If not on localhost (i.e., deployed), always prefer same-origin to avoid CORS
-  // Only use envBaseUrl if it's explicitly provided and not pointing to localhost
+  // Explicitly handle different deployment scenarios
   let baseUrl: string;
   if (hasWindow) {
-    if (windowHostname.includes('vercel.app')) {
-      // Explicitly set base URL for Vercel deployments
+    if (windowHostname === 'aarez-mgnmt.vercel.app') {
+      // Explicitly set base URL for Vercel production
       baseUrl = 'https://aarez-mgnmt.vercel.app';
     } else if (isLocalhost) {
-      // Local development: allow override via env or default to local API
-      baseUrl = envBaseUrl || 'http://localhost:3100';
+      // Local development fallback
+      baseUrl = 'http://localhost:3100';
     } else {
       // Fallback to window origin
       baseUrl = windowOrigin;
     }
   } else {
-    // Fallback for server-side rendering or other contexts
-    baseUrl = envBaseUrl || 'http://localhost:3100';
+    // Server-side rendering or other contexts fallback
+    baseUrl = 'https://aarez-mgnmt.vercel.app';
   }
   
-  console.log('Vite Environment Variables:', import.meta.env);
-  console.log('Environment Base URL:', envBaseUrl);
-  console.log('Window Hostname:', windowHostname);
-  console.log('Window Origin:', windowOrigin);
-  console.log('Is Localhost:', isLocalhost);
   console.log('Determined base URL:', baseUrl);
   console.groupEnd();
   return baseUrl;
