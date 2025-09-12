@@ -271,7 +271,9 @@ export function createApp() {
       process.env.CORS_ORIGIN || 'http://localhost:5173',
       'https://aarez-mgnmt.vercel.app',
       /\.vercel\.app$/,
-      /^http:\/\/localhost:\d+$/  // Allow all localhost origins
+      process.env.NODE_ENV === 'production' 
+        ? 'https://aarez-mgnmt.vercel.app' 
+        : /^http:\/\/localhost:\d+$/  // Allow all localhost origins in development
     ];
     
     const corsOptions = {
