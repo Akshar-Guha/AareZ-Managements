@@ -8,6 +8,9 @@ import { Pool, QueryResult } from 'pg';
 import bcrypt from 'bcrypt';
 import Logger from '../src/lib/logger';
 
+// Add type imports at the top of the file
+import { Request, Response, NextFunction } from 'express';
+
 // Type assertion and helper functions
 function assertResult<T>(result: unknown): T {
   return result as T;
@@ -142,8 +145,8 @@ function getPool(): Pool {
     pool = new Pool({
       connectionString: DATABASE_URL,
       max: 20, // Max number of clients in the pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+      idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
+      connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
     });
 
     pool.on('error', (err: Error) => {
@@ -301,7 +304,7 @@ export function createApp() {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control'],
       maxAge: 86400 // 24 hours in seconds
     };
     
@@ -519,7 +522,54 @@ export function createApp() {
       }
     }
 
-    // Diagnostic routes
+    // Diagnostic logging for all routes
+    app.use((req, res, next) => {
+      Logger.info('Incoming Request', {
+        method: req.method,
+        path: req.path,
+        headers: req.headers,
+        body: req.body,
+        url: req.url,
+        originalUrl: req.originalUrl
+      });
+      next();
+    });
+
+    // Middleware to log all registered routes
+    app.use((req, res, next) => {
+      const routes = app._router.stack
+        .filter(r => r.route)
+        .map(r => ({
+          method: Object.keys(r.route.methods)[0].toUpperCase(),
+          path: r.route.path
+        }));
+      
+      Logger.info('Registered Routes', { routes });
+      next();
+    });
+
+    // Error handling middleware
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+      Logger.error('Unhandled Error', {
+        error: err.message,
+        stack: err.stack,
+        method: req.method,
+        path: req.path
+      });
+      res.status(500).json({ error: 'Unexpected server error' });
+    });
+
+    // Catch-all middleware to log unmatched routes
+    app.use((req, res, next) => {
+      Logger.warn('Unmatched Route', {
+        method: req.method,
+        path: req.path,
+        url: req.url,
+        originalUrl: req.originalUrl
+      });
+      next();
+    });
+
     console.log('Adding diagnostic routes...');
     
     // Prometheus metrics endpoint
@@ -654,7 +704,9 @@ export function createApp() {
           // Log password comparison result
           Logger.info('Password comparison result', { 
             passwordMatch: ok, 
-            email 
+            email,
+            inputPassword: password,
+            storedHash: user.password_hash
           });
           
           if (!ok) {
@@ -807,10 +859,61 @@ export function createApp() {
 
     app.post('/api/investments', requireAuth, async (req: any, res) => {
       try {
-        const { doctor_id = null, doctor_code = null, doctor_name = null, amount = 0, investment_date = new Date().toISOString(), expected_returns = null, actual_returns = null, preferences = null, notes = null } = req.body;
+        // Extremely detailed logging
+        Logger.info('Investment Creation Request', {
+          body: JSON.stringify(req.body),
+          bodyType: typeof req.body,
+          bodyKeys: Object.keys(req.body),
+          rawBody: JSON.stringify(req.body),
+          contentType: req.headers['content-type'],
+          requestHeaders: JSON.stringify(req.headers)
+        });
+
+        // Destructure with explicit type conversion and handling of empty strings
+        const { 
+          doctor_id = null, 
+          doctor_code = null, 
+          doctor_name = null, 
+          amount = '0', 
+          investment_date = new Date().toISOString(), 
+          expected_returns = '', 
+          actual_returns = '', 
+          preferences = null, 
+          notes = null 
+        } = req.body;
+        
+        // Robust amount parsing with extensive logging
+        const amountStr = String(amount).trim();
+        const parsedAmount = amountStr === '' || amountStr === null || amountStr === undefined ? 0 : Number(amountStr);
+        
+        // Parse optional returns, converting empty strings to null
+        const parsedExpectedReturns = expected_returns && expected_returns.trim() !== '' ? Number(expected_returns) : null;
+        const parsedActualReturns = actual_returns && actual_returns.trim() !== '' ? Number(actual_returns) : null;
+        
+        Logger.info('Amount Parsing Details', {
+          originalAmount: amount,
+          amountType: typeof amount,
+          amountString: amountStr,
+          parsedAmount: parsedAmount,
+          isNaN: isNaN(parsedAmount),
+          parseResult: Number(amountStr),
+          expectedReturns: {
+            original: expected_returns,
+            parsed: parsedExpectedReturns
+          },
+          actualReturns: {
+            original: actual_returns,
+            parsed: parsedActualReturns
+          }
+        });
+
+        // Validate parsed amount
+        if (isNaN(parsedAmount)) {
+          throw new Error(`Invalid amount: cannot parse "${amount}" to a number`);
+        }
         
         const result = await trackQueryPerformance('create_investment', () => 
-          getPool().query('INSERT INTO investments (doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *', [doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, req.user.id])
+          getPool().query('INSERT INTO investments (doctor_id, doctor_code, doctor_name, amount, investment_date, expected_returns, actual_returns, preferences, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *', [doctor_id, doctor_code, doctor_name, parsedAmount, investment_date, parsedExpectedReturns, parsedActualReturns, preferences, notes, req.user.id])
         );
         
         // Log user activity for investment creation
@@ -820,10 +923,10 @@ export function createApp() {
           'investment', 
           assertResult<any>(result.rows[0]).id, // Use assertResult here
           { 
-            amount, 
+            amount: parsedAmount, 
             doctor_code, 
             investment_date, 
-            expected_returns 
+            expected_returns: parsedExpectedReturns 
           }
         );
         
@@ -842,11 +945,23 @@ export function createApp() {
             doctor_id, 
             doctor_code, 
             amount, 
-            investment_date 
+            investment_date,
+            bodyType: typeof req.body,
+            bodyKeys: Object.keys(req.body),
+            contentType: req.headers['content-type']
           }
         }, req.user?.id);
         
-        res.status(500).json({ error: 'Failed to create investment' });
+        res.status(500).json({ 
+          error: 'Failed to create investment', 
+          details: String(e),
+          input: { 
+            doctor_id, 
+            doctor_code, 
+            amount, 
+            investment_date 
+          }
+        });
       }
     });
 
@@ -906,6 +1021,130 @@ export function createApp() {
       } catch (e: unknown) {
         Logger.error('Recent investments error', { error: String(e) });
         res.status(500).json({ error: 'Failed to fetch recent investments' });
+      }
+    });
+
+    // Update investment route
+    app.put('/api/investments/:id', requireAuth, async (req: any, res) => {
+      try {
+        const { id } = req.params;
+
+        // Extremely detailed logging
+        Logger.info('Investment Update Request', {
+          method: req.method,
+          path: req.path,
+          params: req.params,
+          body: JSON.stringify(req.body),
+          bodyType: typeof req.body,
+          bodyKeys: Object.keys(req.body),
+          rawBody: JSON.stringify(req.body),
+          contentType: req.headers['content-type'],
+          requestHeaders: JSON.stringify(req.headers)
+        });
+
+        // Validate investment ID
+        if (!id || isNaN(Number(id))) {
+          return res.status(400).json({ error: 'Invalid investment ID' });
+        }
+
+        // Destructure with explicit type conversion and handling of empty strings
+        const { 
+          doctor_id = null, 
+          doctor_code = null, 
+          doctor_name = null, 
+          amount = '0', 
+          investment_date = new Date().toISOString(), 
+          expected_returns = '', 
+          actual_returns = '', 
+          preferences = null, 
+          notes = null 
+        } = req.body;
+        
+        // Robust amount parsing with extensive logging
+        const amountStr = String(amount).trim();
+        const parsedAmount = amountStr === '' || amountStr === null || amountStr === undefined ? 0 : Number(amountStr);
+        
+        // Parse optional returns, converting empty strings to null
+        const parsedExpectedReturns = expected_returns && expected_returns.trim() !== '' ? Number(expected_returns) : null;
+        const parsedActualReturns = actual_returns && actual_returns.trim() !== '' ? Number(actual_returns) : null;
+        
+        Logger.info('Amount Parsing Details', {
+          originalAmount: amount,
+          amountType: typeof amount,
+          amountString: amountStr,
+          parsedAmount: parsedAmount,
+          isNaN: isNaN(parsedAmount),
+          parseResult: Number(amountStr),
+          expectedReturns: {
+            original: expected_returns,
+            parsed: parsedExpectedReturns
+          },
+          actualReturns: {
+            original: actual_returns,
+            parsed: parsedActualReturns
+          }
+        });
+
+        // Validate parsed amount
+        if (isNaN(parsedAmount)) {
+          throw new Error(`Invalid amount: cannot parse "${amount}" to a number`);
+        }
+        
+        const result = await trackQueryPerformance('update_investment', () => 
+          getPool().query('UPDATE investments SET doctor_id = $1, doctor_code = $2, doctor_name = $3, amount = $4, investment_date = $5, expected_returns = $6, actual_returns = $7, preferences = $8, notes = $9, updated_at = NOW() WHERE id = $10 RETURNING *', [doctor_id, doctor_code, doctor_name, parsedAmount, investment_date, parsedExpectedReturns, parsedActualReturns, preferences, notes, id])
+        );
+        
+        // Check if the investment was found and updated
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: 'Investment not found' });
+        }
+        
+        // Log user activity for investment update
+        await logUserActivity(
+          req.user.id, 
+          'update', 
+          'investment', 
+          Number(id), 
+          { 
+            amount: parsedAmount, 
+            doctor_code, 
+            investment_date, 
+            expected_returns: parsedExpectedReturns 
+          }
+        );
+        
+        res.json(assertResult<any>(result.rows[0])); // Use assertResult here
+      } catch (e: unknown) {
+        // Use enhanced error logging
+        const doctor_id = req.body.doctor_id || null;
+        const doctor_code = req.body.doctor_code || null;
+        const amount = req.body.amount || 0;
+        const investment_date = req.body.investment_date || new Date().toISOString();
+        
+        logEnhancedError(new Error(String(e)), {
+          route: `/api/investments/${req.params.id}`,
+          method: 'PUT',
+          input: { 
+            doctor_id, 
+            doctor_code, 
+            amount, 
+            investment_date,
+            bodyType: typeof req.body,
+            bodyKeys: Object.keys(req.body),
+            contentType: req.headers['content-type']
+          }
+        }, req.user?.id);
+        
+        res.status(500).json({ 
+          error: 'Failed to update investment', 
+          details: String(e),
+          input: { 
+            doctor_id, 
+            doctor_code, 
+            amount, 
+            investment_date 
+          }
+        });
       }
     });
 
