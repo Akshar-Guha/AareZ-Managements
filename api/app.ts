@@ -177,6 +177,9 @@ function getPool(): Pool {
         connectionString: DATABASE_URL,
         // The 'ssl' object is often not needed here if sslmode=require is in the connection string.
         // pg library should automatically handle SSL based on connectionString parameters.
+        ssl: {
+          rejectUnauthorized: false // Required for some environments, like Vercel with Neon
+        },
         max: 20, // Max number of clients in the pool
         idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
         connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
