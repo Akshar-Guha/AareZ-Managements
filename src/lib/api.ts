@@ -2,12 +2,17 @@
 const getApiBaseUrl = () => {
   console.group('API Base URL Determination');
   
-  // Use environment variable for base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 
-                  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') 
+  // Use environment variable for base URL with more robust detection
+  const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  const windowHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  
+  const baseUrl = envBaseUrl || 
+                  (windowHostname.includes('vercel.app') 
                     ? 'https://aarez-mgnmt.vercel.app' 
                     : 'http://localhost:3100');
   
+  console.log('Environment Base URL:', envBaseUrl);
+  console.log('Window Hostname:', windowHostname);
   console.log('Determined base URL:', baseUrl);
   console.groupEnd();
   return baseUrl;
