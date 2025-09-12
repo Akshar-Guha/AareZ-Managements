@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import cors from 'cors';
 
 // Load environment variables from multiple sources
 const loadEnv = () => {
@@ -22,7 +23,7 @@ const loadEnv = () => {
 
 loadEnv();
 
-const port = process.env.PORT || 3100;
+const port = process.env.PORT || 5174;
 
 // Log all environment variables for debugging
 console.group('Environment Variables');
@@ -41,6 +42,62 @@ async function startServer() {
   // Dynamically import createApp and ensureSchema after dotenv.config()
   const { createApp } = await import('../api/app');
   const app = createApp();
+
+  // Add CORS middleware with detailed logging
+  const corsOptions = {
+    origin: function(origin, callback) {
+      console.log('CORS: Received Origin:', origin);
+      console.log('CORS: Request Headers:', 
+        origin ? 'Origin header present' : 'No origin header'
+      );
+
+      // Always allow requests from localhost on any port
+      const allowedOrigins = [
+        'http://localhost:5173', 
+        'https://localhost:5173',
+        'http://localhost:5174', 
+        'https://localhost:5174',
+        /^http:\/\/localhost:\d+$/,
+        /^https:\/\/localhost:\d+$/
+      ];
+
+      if (!origin || allowedOrigins.some(allowed => 
+        (typeof allowed === 'string' && allowed === origin) || 
+        (allowed instanceof RegExp && allowed.test(origin))
+      )) {
+        console.log('CORS: Request ALLOWED');
+        callback(null, true);
+      } else {
+        console.log('CORS: Request BLOCKED');
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'X-Requested-With', 
+      'Accept', 
+      'Origin', 
+      'Cookie'
+    ],
+    credentials: true,
+    optionsSuccessStatus: 200
+  };
+
+  // Use cors middleware with detailed options
+  app.use(cors(corsOptions));
+
+  // Additional logging middleware to help diagnose CORS issues
+  app.use((req, res, next) => {
+    console.log('Incoming Request Details:');
+    console.log('Method:', req.method);
+    console.log('Path:', req.path);
+    console.log('Origin Header:', req.get('Origin'));
+    console.log('Referer Header:', req.get('Referer'));
+    console.log('Host Header:', req.get('Host'));
+    next();
+  });
 
   // Run Knex migrations before starting the server
   const knex = (await import('knex')).default;

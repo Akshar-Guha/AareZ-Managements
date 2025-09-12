@@ -1,0 +1,197 @@
+---
+description: |
+  Cursor AI Rules – Enhanced Logic & Debugging Configuration.
+  Applies to every chat and command in this workspace.
+
+globs: []        # Leave empty because the rule should always apply
+alwaysApply: true
+---
+
+# Core Principles
+- **Think step-by-step** before making changes.  
+- **Analyze root causes** instead of patching symptoms.  
+- **Document reasoning** behind significant edits.  
+- **Consider dependencies** and the broader context.  
+
+# Debugging & Problem-Solving Guidelines
+
+## 1. Loop Prevention & Logical Thinking
+1. Explain *why* the issue occurred **before** suggesting any fix.  
+2. If a similar error was fixed earlier, reference that solution and state why a new approach is necessary.  
+3. Check whether the proposed fix may introduce regressions elsewhere.  
+4. Validate every assumption up front.
+
+## 2. Issue-Analysis Protocol
+BEFORE CODING
+
+Identify the exact error.
+
+Trace the root cause (not just symptoms).
+
+Inspect related code that could be affected.
+
+Consider edge cases and side-effects.
+
+Propose a solution with clear reasoning.
+
+WHILE CODING
+
+Make minimal, focused changes.
+
+Test incrementally.
+
+Verify existing functionality still passes.
+
+Comment any non-obvious logic.
+
+AFTER CODING
+
+Review the complete change.
+
+Test edge cases.
+
+Document the fix for future reference.
+
+text
+
+## 3. Common Issue Prevention
+- Validate **all** user inputs.
+- Handle `null` / `undefined` explicitly.
+- Wrap asynchronous code in proper `try/catch`.
+- Avoid hard-coding: prefer constants or config.
+- Monitor for memory leaks in loops & event listeners.
+- Validate API responses before use.
+
+# Code-Quality Standards
+
+## 4. Best Practices
+- Prefer **TypeScript** for type-safety.
+- Use error boundaries where applicable.
+- Follow consistent naming conventions.
+- Write self-documenting code; add JSDoc for complex functions.
+- Handle `async/await` errors explicitly.
+
+## 5. Performance Optimisation
+- Prevent unnecessary React re-renders (`React.memo`, `useMemo`).
+- Lazy-load large components & assets.
+- Optimise DB queries and add indexes.
+- Cache frequently requested data.
+
+# Framework-Specific Rules
+
+### React / Next.js
+- Provide a **`key`** prop in all lists.
+- Clean up on `useEffect` teardown to avoid leaks.
+- Manage state via `useState`, `useReducer`, or context; avoid mutations.
+- Include explicit loading and error states.
+
+### Node.js / Backend
+- Sanitize **all** inputs.
+- Implement robust authentication & authorisation.
+- Keep secrets in environment variables.
+- Add structured logging & health checks.
+- Manage DB connections/pooling correctly.
+
+### Database
+- Use parameterised queries to avoid SQL injection.
+- Index columns used in search or joins.
+- Validate data before writes.
+
+# Communication & Documentation
+
+## 6. Clear Communication
+- Explain changes in plain language.
+- Provide context and trade-offs.
+- Suggest manual testing steps.
+- Document any breaking changes.
+
+## 7. Learning From Previous Issues
+- Keep a changelog of recurring problems.
+- Reference earlier fixes where relevant.
+- Recommend preventive patterns.
+
+# Advanced Debugging Strategies
+
+## 8. Systematic Debugging
+- Use `console.log` or breakpoints *strategically*.
+- Implement log levels: error, warn, info, debug.
+- Employ browser dev-tools and profiling.
+- Add unit, integration, and e2e tests.
+
+## 9. Code-Review Mind-set
+- Review as if explaining to a teammate.
+- Look for security, accessibility, and responsiveness issues.
+- Ensure compliance with functional requirements.
+
+# Anti-Loop Measures
+
+## 10. Pre-Change Checkpoint
+1. What exact problem am I solving?  
+2. Have I seen it before?  
+3. Why might previous fixes not apply?  
+4. Possible side-effects?  
+5. How will I verify success?  
+6. What regression tests are needed?
+
+## 11. Red Flags
+- Repeating the same type of fix.  
+- Patching without understanding.  
+- Work-arounds masking root causes.  
+- Ignoring warnings/errors.  
+- Skipping edge-case tests.
+
+# Implementation Workflow
+
+## 12. Step-by-Step
+1. **Understand** current code.  
+2. **Analyse** root cause.  
+3. **Plan** a minimal solution.  
+4. **Implement** carefully.  
+5. **Test** thoroughly.  
+6. **Document** logic and decisions.  
+7. **Review** against requirements.
+
+## 13. Context Awareness
+- Respect existing architecture & style.  
+- Favour maintainability and scalability.  
+- Align with team workflows and constraints.
+
+# Emergency Protocols
+
+## 14. When Stuck in Loops
+- **STOP**; list unsuccessful attempts.  
+- Identify differences in the current scenario.  
+- Re-evaluate requirements; seek clarification.  
+- Propose alternative solutions with pros/cons.
+
+## 15. Escalation Criteria
+- Same fix attempted >2 times.  
+- Fix introduces more issues.  
+- Problem appears architectural.  
+- Requirements are unclear or conflicting.
+
+# Project-Specific Add-Ons
+
+## 19. Manager App File-Structure Rules
+- `src/pages/` → implement loading/error states; wrap with `Layout`.  
+- `src/components/` → use typed props & proper event handling.  
+- `src/context/` → *never* mutate state directly; use setters.  
+- API layers (`api/`, `api-local/`, `src/lib/api.ts`) must stay consistent.  
+- Navigation: reference `src/constants/nav.ts`; never hard-code routes.
+
+## 20. Manager App Testing Strategy
+- Test authentication, dashboard data, OCR, CRUD, navigation, and error paths.
+
+## 21. Manager App Performance Optimisation
+- Lazy-load dashboards; paginate large lists.  
+- Use `React.memo` for expensive calcs.  
+- Cache context data; debounce search.
+
+# MCP Server Configuration (Ref 22)
+- **Neon PostgreSQL**, **Vercel**, and **Cursor IDE** integration details preserved.  
+- *Required environment variables:* `DATABASE_URL`, `JWT_SECRET`, `AXIOM_TOKEN`, `NODE_ENV`.  
+- Deployment branch: `main`; build command: `npm run build`; output: `dist`.  
+- Logging: *info* level; auto-sync enabled.
+
+---
+Follow these guidelines to maintain robust, maintainable, and high-performance code across the entire project.
