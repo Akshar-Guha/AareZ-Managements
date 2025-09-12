@@ -1,4 +1,4 @@
-import { createApp } from './app';
+import { createApp } from './app.js';
 import serverless from 'serverless-http';
 import type { Request, Response } from 'express';
 

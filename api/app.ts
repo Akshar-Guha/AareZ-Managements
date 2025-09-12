@@ -6,7 +6,7 @@ import * as promClient from 'prom-client';
 import jwt from 'jsonwebtoken';
 import { Pool, QueryResult } from 'pg';
 import bcrypt from 'bcrypt';
-import Logger from '../src/lib/logger';
+import Logger from '../src/lib/logger.js';
 
 // Type assertion and helper functions
 function assertResult<T>(result: unknown): T {
