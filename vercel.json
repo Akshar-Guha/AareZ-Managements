@@ -64,5 +64,10 @@
     "NODE_ENV": "production",
     "CORS_ORIGIN": "https://aarez-mgnmt.vercel.app",
     "MIGRATE_ON_START": "true"
+  },
+  "build": {
+    "env": {
+      "VITE_PUBLIC_CORS_ORIGIN": "https://aarez-mgnmt.vercel.app"
+    }
   }
 }

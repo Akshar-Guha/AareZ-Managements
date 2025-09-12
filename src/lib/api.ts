@@ -25,7 +25,7 @@ const getApiBaseUrl = () => {
     }
   } else {
     // Server-side rendering or other contexts fallback
-    baseUrl = 'https://aarez-mgnmt.vercel.app';
+    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN || 'https://aarez-mgnmt.vercel.app';
   }
   
   console.log('Determined base URL:', baseUrl);
