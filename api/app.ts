@@ -735,41 +735,66 @@ export function createApp() {
 
     // Browser/Client log ingestion endpoint (appears in Vercel Runtime Logs)
     app.post('/api/logs', (req: Request, res: Response) => {
-      const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
-      const payload = {
-        timestamp: timestamp || new Date().toISOString(),
-        source: source || 'browser',
-        url,
-        userAgent,
-        ip: req.ip,
-        requestId: req.headers['x-request-id'],
-        context
-      } as Record<string, any>;
-
-      const safe = (obj: any) => {
-        try {
-          const seen = new WeakSet();
-          return JSON.stringify(obj, (k, v) => {
-            if (typeof v === 'bigint') return v.toString();
-            if (v && typeof v === 'object') {
-              if (seen.has(v)) return '[Circular]';
-              seen.add(v);
-            }
-            return v;
-          });
-        } catch {
-          return String(obj);
+      try {
+        const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
+        
+        // Validate input
+        if (!message) {
+          return res.status(400).json({ error: 'Log message is required' });
         }
-      };
 
-      const line = `${payload.timestamp} [${String(level).toUpperCase()}] ${message} ${safe(payload)}`;
-      const upper = String(level).toUpperCase();
-      if (upper === 'ERROR') console.error(line);
-      else if (upper === 'WARN' || upper === 'WARNING') console.warn(line);
-      else if (upper === 'DEBUG') console.debug(line);
-      else console.log(line);
+        const payload = {
+          timestamp: timestamp || new Date().toISOString(),
+          level: String(level).toUpperCase(),
+          source: source || 'browser',
+          url,
+          userAgent,
+          ip: req.ip,
+          requestId: req.headers['x-request-id'],
+          context
+        } as Record<string, any>;
 
-      res.status(204).end();
+        const safe = (obj: any) => {
+          try {
+            const seen = new WeakSet();
+            return JSON.stringify(obj, (k, v) => {
+              if (typeof v === 'bigint') return v.toString();
+              if (v && typeof v === 'object') {
+                if (seen.has(v)) return '[Circular]';
+                seen.add(v);
+              }
+              return v;
+            });
+          } catch {
+            return String(obj);
+          }
+        };
+
+        const line = `${payload.timestamp} [${payload.level}] ${message} ${safe(payload)}`;
+        
+        // Log to console based on level
+        switch(payload.level) {
+          case 'ERROR':
+            console.error(line);
+            break;
+          case 'WARN':
+            console.warn(line);
+            break;
+          case 'DEBUG':
+            console.debug(line);
+            break;
+          default:
+            console.log(line);
+        }
+
+        // Optional: Add more advanced logging (e.g., to external service)
+        // Logger.log(payload.level, message, payload);
+
+        res.status(204).end();
+      } catch (error) {
+        console.error('Log ingestion error:', error);
+        res.status(500).json({ error: 'Failed to process log' });
+      }
     });
 
     // Environment info route

@@ -18,6 +18,18 @@
       }
     },
     {
+      "src": "/api/logs",
+      "methods": ["POST", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400"
+      },
+      "dest": "api/index.ts"
+    },
+    {
       "src": "/api/options/(.*)",
       "methods": ["OPTIONS"],
       "headers": {
