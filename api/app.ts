@@ -338,51 +338,49 @@ export function createApp() {
     console.log('Configuring CORS middleware...');
     
     const corsOptions = {
-      origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-        console.log('CORS: Received origin:', origin); // Add this line for debugging
-        
-        // Allow requests with no origin (like mobile apps, curl, Postman)
-        if (!origin) {
-          Logger.info('Allowing request with no origin');
-          return callback(null, true);
-        }
-        
-        // Explicitly allow Vercel deployment and localhost
-        const allowedOrigins = [
-          'https://aarez-mgnmt.vercel.app',
-          'http://localhost:5173',
-          'https://localhost:5173',
-          'http://localhost:5174',
-          'https://localhost:5174',
-          /^https:\/\/.*\.vercel\.app$/
-        ];
-        
-        // Check if the origin is allowed
-        const allowed = allowedOrigins.some(allowedOrigin => {
-          if (typeof allowedOrigin === 'string') {
-            return allowedOrigin === origin;
-          } else if (allowedOrigin instanceof RegExp) {
-            return allowedOrigin.test(origin);
-          }
-          return false;
-        });
-        
-        if (allowed) {
-          Logger.info(`Allowing request from origin: ${origin}`);
-          return callback(null, true);
-        } else {
-          Logger.warn(`Blocking request from origin: ${origin}`);
-          return callback(new Error(`Origin ${origin} not allowed by CORS`));
-        }
-      },
-      credentials: true,
+      origin:
+        process.env.NODE_ENV === 'production'
+          ? 'https://aarez-mgnmt.vercel.app'
+          : [
+              'http://localhost:5173', 
+              'http://localhost:5174', 
+              'https://aarez-mgnmt.vercel.app'
+            ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Cookie'],
-      maxAge: 86400 // 24 hours in seconds
+      allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+      credentials: true,
+      optionsSuccessStatus: 200
     };
-    
+
     app.use(cors(corsOptions));
-    console.log('CORS middleware configured for Vercel deployment');
+
+    // Authentication error handling middleware
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+      console.error('Unhandled error:', err);
+      
+      // Log detailed error information
+      Logger.error('Unhandled application error', {
+        errorName: err.name,
+        errorMessage: err.message,
+        errorStack: err.stack,
+        requestPath: req.path,
+        requestMethod: req.method
+      });
+
+      // Specific error handling
+      if (err.name === 'UnauthorizedError') {
+        return res.status(401).json({ 
+          error: 'Authentication failed', 
+          details: 'Invalid or expired token' 
+        });
+      }
+
+      // Generic server error
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        details: 'An unexpected error occurred' 
+      });
+    });
 
     // JSON parsing middleware
     console.log('Configuring JSON middleware...');

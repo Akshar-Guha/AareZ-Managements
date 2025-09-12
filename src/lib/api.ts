@@ -15,18 +15,21 @@ const getApiBaseUrl = () => {
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
       // Explicitly set base URL for Vercel production
-      baseUrl = 'https://aarez-mgnmt.vercel.app/api';
+      baseUrl = 'https://aarez-mgnmt.vercel.app';
     } else if (isLocalhost) {
       // Local development fallback with explicit port for API
-      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174/api';
+      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174';
     } else {
-      // Fallback to window origin with /api prefix
-      baseUrl = `${windowOrigin}/api`;
+      // Fallback to window origin
+      baseUrl = windowOrigin;
     }
   } else {
     // Server-side rendering or other contexts fallback
-    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}/api` : 'https://aarez-mgnmt.vercel.app/api';
+    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN || 'https://aarez-mgnmt.vercel.app';
   }
+  
+  // Ensure base URL ends with /api
+  baseUrl = baseUrl.replace(/\/+$/, '') + '/api';
   
   console.log('Determined base URL:', baseUrl);
   console.groupEnd();
