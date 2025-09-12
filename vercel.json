@@ -14,7 +14,7 @@
   },
   "functions": {
     "api/index.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@2.16.0"
     }
   },
   "rewrites": [
