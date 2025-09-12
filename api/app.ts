@@ -521,7 +521,7 @@ export function createApp() {
     }
 
     // Diagnostic logging for all routes
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       Logger.info('Incoming Request', {
         method: req.method,
         path: req.path,
@@ -535,11 +535,17 @@ export function createApp() {
 
     // Middleware to log all registered routes
     app.use((req: Request, res: Response, next: NextFunction) => {
+      interface ExpressRouteLayer {
+        route?: {
+          methods: Record<string, boolean>;
+          path: string;
+        };
+      }
       const routes = app._router.stack
-        .filter((r: { route?: any }) => r.route)
-        .map((r: { route: { methods: Record<string, boolean>, path: string } }) => ({
-          method: Object.keys(r.route.methods)[0].toUpperCase(),
-          path: r.route.path
+        .filter((r: ExpressRouteLayer) => r.route)
+        .map((r: ExpressRouteLayer) => ({
+          method: Object.keys(r.route!.methods)[0].toUpperCase(),
+          path: r.route!.path
         }));
       
       Logger.info('Registered Routes', { routes });
