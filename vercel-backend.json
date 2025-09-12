@@ -5,52 +5,5 @@
     "api/index.ts": {
       "runtime": "node18.x"
     }
-  },
-  "routes": [
-    {
-      "src": "/api/auth/login",
-      "methods": ["POST"],
-      "dest": "api/index.ts",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Allow-Credentials": "true"
-      }
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.ts",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Allow-Credentials": "true"
-      }
-    },
-    {
-      "src": "/api/logs",
-      "methods": ["POST", "OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400"
-      },
-      "dest": "api/index.ts"
-    },
-    {
-      "src": "/api/options/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Max-Age": "86400",
-        "Access-Control-Allow-Credentials": "true"
-      },
-      "dest": "api/index.ts"
-    }
-  ]
+  }
 }
