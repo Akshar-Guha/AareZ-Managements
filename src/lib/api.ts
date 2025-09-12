@@ -14,17 +14,23 @@ const getApiBaseUrl = () => {
   // If not on localhost (i.e., deployed), always prefer same-origin to avoid CORS
   // Only use envBaseUrl if it's explicitly provided and not pointing to localhost
   let baseUrl: string;
-  if (hasWindow && !isLocalhost) {
-    if (envBaseUrl && !/localhost/.test(envBaseUrl)) {
-      baseUrl = envBaseUrl;
+  if (hasWindow) {
+    if (windowHostname.includes('vercel.app')) {
+      // Explicitly set base URL for Vercel deployments
+      baseUrl = 'https://aarez-mgnmt.vercel.app';
+    } else if (isLocalhost) {
+      // Local development: allow override via env or default to local API
+      baseUrl = envBaseUrl || 'http://localhost:3100';
     } else {
-      baseUrl = windowOrigin; // same-origin on Vercel/custom domain
+      // Fallback to window origin
+      baseUrl = windowOrigin;
     }
   } else {
-    // Local development: allow override via env or default to local API
+    // Fallback for server-side rendering or other contexts
     baseUrl = envBaseUrl || 'http://localhost:3100';
   }
-  console.log('Vite Environment Variables:', import.meta.env); // Added to check all Vite environment variables
+  
+  console.log('Vite Environment Variables:', import.meta.env);
   console.log('Environment Base URL:', envBaseUrl);
   console.log('Window Hostname:', windowHostname);
   console.log('Window Origin:', windowOrigin);
@@ -39,10 +45,10 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API GET Request: ${path}`);
-      console.log(`Fetching GET ${baseUrl}${path}`);
+      console.log(`Fetching GET ${baseUrl}/api${path}`);
       
-      const res = await fetch(`${baseUrl}${path}`, {
-        credentials: 'include',
+      const res = await fetch(`${baseUrl}/api${path}`, {
+        credentials: 'include', // Explicitly include credentials for cross-site requests
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache'
@@ -73,8 +79,8 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API POST Request: ${path}`);
-      console.log(`Posting to ${baseUrl}${path}`, body);
-      const res = await fetch(`${baseUrl}${path}`, {
+      console.log(`Posting to ${baseUrl}/api${path}`, body);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'POST', 
         credentials: 'include', 
         headers: { 
@@ -107,8 +113,8 @@ export const API = {
   async put<T>(path: string, body?: any): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Putting to ${baseUrl}${path}`, body);
-      const res = await fetch(`${baseUrl}${path}`, {
+      console.log(`Putting to ${baseUrl}/api${path}`, body);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'PUT', 
         credentials: 'include', 
         headers: { 
@@ -136,8 +142,8 @@ export const API = {
   async del<T>(path: string): Promise<T | undefined> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Deleting ${baseUrl}${path}`);
-      const res = await fetch(`${baseUrl}${path}`, {
+      console.log(`Deleting ${baseUrl}/api${path}`);
+      const res = await fetch(`${baseUrl}/api${path}`, {
         method: 'DELETE', 
         credentials: 'include',
         headers: {
@@ -145,17 +151,17 @@ export const API = {
         }
       });
       
-      console.log(`DELETE ${path} response status:`, res.status);
+      console.log(`DELETE /api${path} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`DELETE ${path} error:`, errorText);
+        console.error(`DELETE /api${path} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`DELETE ${path} network error:`, error);
+      console.error(`DELETE /api${path} network error:`, error);
       throw error;
     }
   },
