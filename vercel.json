@@ -50,5 +50,10 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CORS_ORIGIN": "https://aarez-mgnmt.vercel.app",
+    "MIGRATE_ON_START": "true"
+  }
 }

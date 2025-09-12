@@ -2,14 +2,5 @@
   "status": "commited",
   "type": "frontend",
   "scope": "codebase",
-  "localEndpoint": "http://localhost:5173",
-  "executionArgs": {
-    "projectName": "Manager",
-    "projectPath": "S:\\projects\\Manager",
-    "testIds": [],
-    "additionalInstruction": "Run comprehensive tests for the application",
-    "envs": {
-      "API_KEY": ""
-    }
-  }
+  "localEndpoint": "http://localhost:5173"
 }

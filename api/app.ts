@@ -157,25 +157,69 @@ function trackQueryPerformance<T>(
 let pool: Pool | null = null;
 const DATABASE_URL = process.env.DATABASE_URL;
 
+// Modify the getPool function to handle connection more robustly
 function getPool(): Pool {
   Logger.info('getPool function called', { databaseUrlPresent: !!DATABASE_URL });
+  
   if (!DATABASE_URL) {
     console.warn('DATABASE_URL not set. API will error until it is configured.');
     throw new Error('DATABASE_URL is required');
   }
+  
   if (!pool) {
     console.log('Creating new PostgreSQL connection pool...');
-    pool = new Pool({
-      connectionString: DATABASE_URL,
-      max: 20, // Max number of clients in the pool
-      idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
-      connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
-    });
+    
+    try {
+      // Parse the connection string manually
+      const urlParts = new URL(DATABASE_URL);
+      
+      pool = new Pool({
+        connectionString: DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false, // Be cautious with this in production
+          // You might want to add more specific SSL configuration
+        },
+        max: 20, // Max number of clients in the pool
+        idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
+        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+      });
 
-    pool.on('error', (err: Error) => {
-      Logger.error('Unexpected error on idle client', { error: err });
-    });
+      pool.on('error', (err: Error) => {
+        Logger.error('Unexpected error on idle PostgreSQL client', { 
+          error: err,
+          connectionDetails: {
+            host: urlParts.hostname,
+            port: urlParts.port,
+            database: urlParts.pathname.replace('/', '')
+          }
+        });
+      });
+
+      // Test the connection
+      pool.connect((err, client, release) => {
+        if (err) {
+          Logger.error('Error acquiring client from pool', { 
+            error: err,
+            connectionDetails: {
+              host: urlParts.hostname,
+              port: urlParts.port,
+              database: urlParts.pathname.replace('/', '')
+            }
+          });
+          throw err;
+        }
+        release(); // Release the client back to the pool
+        Logger.info('Successfully connected to PostgreSQL database');
+      });
+    } catch (setupError) {
+      Logger.error('Failed to set up database pool', { 
+        error: setupError,
+        databaseUrl: DATABASE_URL ? 'Provided' : 'Not Provided'
+      });
+      throw setupError;
+    }
   }
+  
   return pool;
 }
 
