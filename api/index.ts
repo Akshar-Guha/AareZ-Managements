@@ -23,7 +23,9 @@ async function getApp() {
       MIGRATE_ON_START: process.env.MIGRATE_ON_START
     });
 
+    console.log('Attempting to create Express app...');
     appInstance = createApp();
+    console.log('Express app created successfully.');
     
     // Run migration on cold start if enabled
     if (process.env.MIGRATE_ON_START !== 'false') {

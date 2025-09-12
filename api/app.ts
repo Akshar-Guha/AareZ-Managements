@@ -170,15 +170,13 @@ function getPool(): Pool {
     console.log('Creating new PostgreSQL connection pool...');
     
     try {
-      // Parse the connection string manually
+      // Parse the connection string manually (for logging purposes, not direct Pool config)
       const urlParts = new URL(DATABASE_URL);
       
       pool = new Pool({
         connectionString: DATABASE_URL,
-        ssl: {
-          rejectUnauthorized: false, // Be cautious with this in production
-          // You might want to add more specific SSL configuration
-        },
+        // The 'ssl' object is often not needed here if sslmode=require is in the connection string.
+        // pg library should automatically handle SSL based on connectionString parameters.
         max: 20, // Max number of clients in the pool
         idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
         connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
@@ -195,10 +193,13 @@ function getPool(): Pool {
         });
       });
 
-      // Test the connection
-      pool.connect((err, client, release) => {
-        if (err) {
-          Logger.error('Error acquiring client from pool', { 
+      // Test the connection by acquiring a client and immediately releasing it
+      pool.query('SELECT 1')
+        .then(() => {
+          Logger.info('Successfully connected to PostgreSQL database');
+        })
+        .catch((err) => {
+          Logger.error('Error during initial database connection test', { 
             error: err,
             connectionDetails: {
               host: urlParts.hostname,
@@ -206,11 +207,8 @@ function getPool(): Pool {
               database: urlParts.pathname.replace('/', '')
             }
           });
-          throw err;
-        }
-        release(); // Release the client back to the pool
-        Logger.info('Successfully connected to PostgreSQL database');
-      });
+          throw err; // Re-throw to prevent app from starting with a bad connection
+        });
     } catch (setupError) {
       Logger.error('Failed to set up database pool', { 
         error: setupError,
