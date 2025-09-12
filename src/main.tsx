@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './index.css';
 import ErrorBoundary from './components/ErrorBoundary';
+import './lib/console-bridge';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

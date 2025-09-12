@@ -38,9 +38,6 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       host: true
     },
-    define: {
-      'import.meta.env.VITE_AXIOM_TOKEN': JSON.stringify(env.VITE_AXIOM_TOKEN),
-      'import.meta.env.VITE_AXIOM_DATASET': JSON.stringify(env.VITE_AXIOM_DATASET || 'aarez-mgnmt-logs')
-    }
+    define: {}
   };
 });

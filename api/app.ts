@@ -22,6 +22,31 @@ function safeParseInt(value: unknown, defaultValue = 0): number {
   return defaultValue;
 }
 
+// Redact sensitive fields from objects before logging
+function redactSensitive<T>(obj: T): T {
+  try {
+    const SENSITIVE_KEYS = ['password', 'password_hash', 'token', 'authorization', 'cookie', 'set-cookie', 'authorization', 'x-api-key'];
+    const helper = (input: any): any => {
+      if (!input || typeof input !== 'object') return input;
+      if (Array.isArray(input)) return input.map(helper);
+      const out: Record<string, any> = {};
+      for (const [k, v] of Object.entries(input)) {
+        if (SENSITIVE_KEYS.includes(k.toLowerCase())) {
+          out[k] = '[REDACTED]';
+        } else if (typeof v === 'object') {
+          out[k] = helper(v);
+        } else {
+          out[k] = v;
+        }
+      }
+      return out;
+    };
+    return helper(obj);
+  } catch {
+    return obj;
+  }
+}
+
 // Modify the ingest function to use Logger
 function ingest(dataset: string, data: unknown[]): void {
   // Always log to console for local debugging
@@ -525,11 +550,13 @@ export function createApp() {
 
     // Diagnostic logging for all routes
     app.use((req: Request, res: Response, next: NextFunction) => {
+      const safeHeaders = redactSensitive(req.headers);
+      const safeBody = redactSensitive(req.body);
       Logger.info('Incoming Request', {
         method: req.method,
         path: req.path,
-        headers: req.headers,
-        body: req.body,
+        headers: safeHeaders,
+        body: safeBody,
         url: req.url,
         originalUrl: req.originalUrl
       });
@@ -602,6 +629,42 @@ export function createApp() {
       } catch (error: unknown) {
         Logger.error('Diagnostics error', { error: String(error) });
         res.status(500).json({ error: 'Failed to retrieve diagnostics' });
+      }
+    });
+
+    // Browser/Client log ingestion endpoint (appears in Vercel Runtime Logs)
+    app.post('/api/logs', (req: Request, res: Response) => {
+      try {
+        const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
+        const ctx = {
+          ...context,
+          timestamp: timestamp || new Date().toISOString(),
+          source: source || 'unknown',
+          url,
+          userAgent,
+          ip: req.ip,
+          requestId: req.headers['x-request-id']
+        } as Record<string, any>;
+
+        switch (String(level).toUpperCase()) {
+          case 'ERROR':
+            Logger.error(message, ctx);
+            break;
+          case 'WARN':
+          case 'WARNING':
+            Logger.warn(message, ctx);
+            break;
+          case 'DEBUG':
+            Logger.debug(message, ctx);
+            break;
+          case 'INFO':
+          default:
+            Logger.info(message, ctx);
+        }
+        res.status(204).end();
+      } catch (e) {
+        console.error('Failed to ingest client log', e);
+        res.status(200).json({ ok: true }); // avoid breaking client UI on log errors
       }
     });
 
@@ -711,9 +774,7 @@ export function createApp() {
           // Log password comparison result
           Logger.info('Password comparison result', { 
             passwordMatch: ok, 
-            email,
-            inputPassword: password,
-            storedHash: user.password_hash
+            email
           });
           
           if (!ok) {

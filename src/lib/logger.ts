@@ -16,6 +16,7 @@ class Logger {
   private static logLevel: LogLevel = LogLevel.INFO;
   private static isVercel: boolean = false;
   private static isLoggingEnabled: boolean = true;
+  private static isBrowser: boolean = typeof window !== 'undefined' && typeof document !== 'undefined';
 
   static configure(options: { 
     level?: LogLevel 
@@ -58,6 +59,45 @@ class Logger {
       case LogLevel.DEBUG:
         console.debug(formattedMessage);
         break;
+    }
+
+    // Forward browser logs to server so they show up in Vercel Runtime Logs
+    // Only run in browser, avoid recursive logging on server
+    if (this.isBrowser) {
+      try {
+        // If console bridge is active, it already forwards console output to /api/logs
+        if (typeof window !== 'undefined' && (window as any).__CONSOLE_BRIDGE_ACTIVE__) {
+          return;
+        }
+        const resolveApiBase = () => {
+          const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL;
+          const host = window.location.hostname;
+          if (envBase) return envBase;
+          if (host.includes('localhost')) return 'http://localhost:3100';
+          return window.location.origin; // same-origin on Vercel
+        };
+        // Fire-and-forget; avoid blocking UI
+        fetch(`${resolveApiBase()}/api/logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            level,
+            message,
+            context,
+            timestamp: new Date().toISOString(),
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+            source: 'browser'
+          })
+        }).catch(() => {
+          // Swallow network errors to keep logging non-blocking in the browser
+        });
+      } catch {
+        // No-op
+      }
     }
   }
 
