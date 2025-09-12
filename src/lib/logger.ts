@@ -76,7 +76,7 @@ class Logger {
           const isLocalhost = host.includes('localhost') || host === '127.0.0.1' || /^(localhost|127\.0\.0\.1)(:\\d+)?$/.test(host);
           
           if (!isLocalhost) {
-            // In production, prefer explicit env var, otherwise use same-origin
+            // In production, ignore localhost env overrides
             if (envBase && !/localhost/.test(envBase)) return envBase;
             return `${origin}/api`; // same-origin on Vercel/custom domain
           }

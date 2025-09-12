@@ -338,49 +338,51 @@ export function createApp() {
     console.log('Configuring CORS middleware...');
     
     const corsOptions = {
-      origin:
-        process.env.NODE_ENV === 'production'
-          ? 'https://aarez-mgnmt.vercel.app'
-          : [
-              'http://localhost:5173', 
-              'http://localhost:5174', 
-              'https://aarez-mgnmt.vercel.app'
-            ],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-      credentials: true,
-      optionsSuccessStatus: 200
-    };
-
-    app.use(cors(corsOptions));
-
-    // Authentication error handling middleware
-    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-      console.error('Unhandled error:', err);
-      
-      // Log detailed error information
-      Logger.error('Unhandled application error', {
-        errorName: err.name,
-        errorMessage: err.message,
-        errorStack: err.stack,
-        requestPath: req.path,
-        requestMethod: req.method
-      });
-
-      // Specific error handling
-      if (err.name === 'UnauthorizedError') {
-        return res.status(401).json({ 
-          error: 'Authentication failed', 
-          details: 'Invalid or expired token' 
+      origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+        console.log('CORS: Received origin:', origin); // Add this line for debugging
+        
+        // Allow requests with no origin (like mobile apps, curl, Postman)
+        if (!origin) {
+          Logger.info('Allowing request with no origin');
+          return callback(null, true);
+        }
+        
+        // Explicitly allow Vercel deployment and localhost
+        const allowedOrigins = [
+          'https://aarez-mgnmt.vercel.app',
+          'http://localhost:5173',
+          'https://localhost:5173',
+          'http://localhost:5174',
+          'https://localhost:5174',
+          /^https:\/\/.*\.vercel\.app$/
+        ];
+        
+        // Check if the origin is allowed
+        const allowed = allowedOrigins.some(allowedOrigin => {
+          if (typeof allowedOrigin === 'string') {
+            return allowedOrigin === origin;
+          } else if (allowedOrigin instanceof RegExp) {
+            return allowedOrigin.test(origin);
+          }
+          return false;
         });
-      }
-
-      // Generic server error
-      res.status(500).json({ 
-        error: 'Internal server error', 
-        details: 'An unexpected error occurred' 
-      });
-    });
+        
+        if (allowed) {
+          Logger.info(`Allowing request from origin: ${origin}`);
+          return callback(null, true);
+        } else {
+          Logger.warn(`Blocking request from origin: ${origin}`);
+          return callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Cookie'],
+      maxAge: 86400 // 24 hours in seconds
+    };
+    
+    app.use(cors(corsOptions));
+    console.log('CORS middleware configured for Vercel deployment');
 
     // JSON parsing middleware
     console.log('Configuring JSON middleware...');
@@ -733,66 +735,41 @@ export function createApp() {
 
     // Browser/Client log ingestion endpoint (appears in Vercel Runtime Logs)
     app.post('/api/logs', (req: Request, res: Response) => {
-      try {
-        const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
-        
-        // Validate input
-        if (!message) {
-          return res.status(400).json({ error: 'Log message is required' });
+      const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
+      const payload = {
+        timestamp: timestamp || new Date().toISOString(),
+        source: source || 'browser',
+        url,
+        userAgent,
+        ip: req.ip,
+        requestId: req.headers['x-request-id'],
+        context
+      } as Record<string, any>;
+
+      const safe = (obj: any) => {
+        try {
+          const seen = new WeakSet();
+          return JSON.stringify(obj, (k, v) => {
+            if (typeof v === 'bigint') return v.toString();
+            if (v && typeof v === 'object') {
+              if (seen.has(v)) return '[Circular]';
+              seen.add(v);
+            }
+            return v;
+          });
+        } catch {
+          return String(obj);
         }
+      };
 
-        const payload = {
-          timestamp: timestamp || new Date().toISOString(),
-          level: String(level).toUpperCase(),
-          source: source || 'browser',
-          url,
-          userAgent,
-          ip: req.ip,
-          requestId: req.headers['x-request-id'],
-          context
-        } as Record<string, any>;
+      const line = `${payload.timestamp} [${String(level).toUpperCase()}] ${message} ${safe(payload)}`;
+      const upper = String(level).toUpperCase();
+      if (upper === 'ERROR') console.error(line);
+      else if (upper === 'WARN' || upper === 'WARNING') console.warn(line);
+      else if (upper === 'DEBUG') console.debug(line);
+      else console.log(line);
 
-        const safe = (obj: any) => {
-          try {
-            const seen = new WeakSet();
-            return JSON.stringify(obj, (k, v) => {
-              if (typeof v === 'bigint') return v.toString();
-              if (v && typeof v === 'object') {
-                if (seen.has(v)) return '[Circular]';
-                seen.add(v);
-              }
-              return v;
-            });
-          } catch {
-            return String(obj);
-          }
-        };
-
-        const line = `${payload.timestamp} [${payload.level}] ${message} ${safe(payload)}`;
-        
-        // Log to console based on level
-        switch(payload.level) {
-          case 'ERROR':
-            console.error(line);
-            break;
-          case 'WARN':
-            console.warn(line);
-            break;
-          case 'DEBUG':
-            console.debug(line);
-            break;
-          default:
-            console.log(line);
-        }
-
-        // Optional: Add more advanced logging (e.g., to external service)
-        // Logger.log(payload.level, message, payload);
-
-        res.status(204).end();
-      } catch (error) {
-        console.error('Log ingestion error:', error);
-        res.status(500).json({ error: 'Failed to process log' });
-      }
+      res.status(204).end();
     });
 
     // Environment info route

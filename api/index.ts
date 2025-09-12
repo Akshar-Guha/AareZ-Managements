@@ -78,22 +78,12 @@ async function getApp() {
 
 export default async function handler(req: Request, res: Response) {
   console.log(`api/index.ts: Handler invoked for: ${req.method} ${req.url}`);
-  console.log(`api/index.ts: Full Request Details:`, {
-    method: req.method,
-    url: req.url,
-    headers: {
-      host: req.headers.host,
-      'user-agent': req.headers['user-agent'],
-      'content-type': req.headers['content-type']
-    },
-    body: req.body ? JSON.stringify(req.body) : 'No body'
-  });
+  console.log(`api/index.ts: Request Headers (partial): Host=${req.headers.host}, User-Agent=${req.headers['user-agent']}`);
 
   // Explicit CORS headers for all responses
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   res.setHeader('Access-Control-Max-Age', '86400');
 
   // Handle OPTIONS preflight requests
@@ -105,11 +95,8 @@ export default async function handler(req: Request, res: Response) {
   try {
     const { handler } = await getApp();
     console.log('api/index.ts: getApp() returned handler. Proceeding with request.');
-    
     // Set custom headers for debugging
     res.setHeader('X-Powered-By', 'Aarez Healthcare Vercel Function');
-    res.setHeader('X-Request-Path', req.url);
-    res.setHeader('X-Request-Method', req.method);
 
     // Handle the request with serverless-http
     return await handler(req, res);
@@ -122,15 +109,12 @@ export default async function handler(req: Request, res: Response) {
       method: req.method,
       url: req.url,
       timestamp: new Date().toISOString(),
-      errorStack: error instanceof Error ? error.stack : 'No stack trace',
-      requestHeaders: JSON.stringify(req.headers),
-      requestBody: req.body ? JSON.stringify(req.body) : 'No body'
+      errorStack: error instanceof Error ? error.stack : 'No stack trace'
     });
 
     res.status(500).json({
       error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      details: 'An unexpected error occurred during request processing'
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }

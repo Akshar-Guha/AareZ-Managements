@@ -14,7 +14,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<void>;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -88,7 +88,6 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
     try {
       const user = await API.post<User>('/auth/login', { email, password });
       set({ user, isAuthenticated: true, isLoading: false });
-      return user;
     } catch (error) {
       console.error('Login failed:', error);
       set({ isLoading: false });

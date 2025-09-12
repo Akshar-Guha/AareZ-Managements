@@ -15,21 +15,18 @@ const getApiBaseUrl = () => {
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
       // Explicitly set base URL for Vercel production
-      baseUrl = 'https://aarez-mgnmt.vercel.app';
+      baseUrl = 'https://aarez-mgnmt.vercel.app/api';
     } else if (isLocalhost) {
       // Local development fallback with explicit port for API
-      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174';
+      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174/api';
     } else {
-      // Fallback to window origin
-      baseUrl = windowOrigin;
+      // Fallback to window origin with /api prefix
+      baseUrl = `${windowOrigin}/api`;
     }
   } else {
     // Server-side rendering or other contexts fallback
-    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN || 'https://aarez-mgnmt.vercel.app';
+    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}/api` : 'https://aarez-mgnmt.vercel.app/api';
   }
-  
-  // Ensure base URL ends with /api
-  baseUrl = baseUrl.replace(/\/+$/, '') + '/api';
   
   console.log('Determined base URL:', baseUrl);
   console.groupEnd();
@@ -133,9 +130,9 @@ export const API = {
   async put<T>(path: string, body?: any): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Putting to ${baseUrl}${path}`, body);
+      console.log(`Putting to ${baseUrl}/api${path}`, body);
       const fullPath = path.startsWith('/') ? path : `/${path}`;
-      const res = await fetch(`${baseUrl}${fullPath}`, {
+      const res = await fetch(`${baseUrl}/api${fullPath}`, {
         method: 'PUT', 
         credentials: 'include', 
         headers: { 
@@ -145,17 +142,17 @@ export const API = {
         body: JSON.stringify(body) 
       });
       
-      console.log(`PUT ${fullPath} response status:`, res.status);
+      console.log(`PUT /api${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`PUT ${fullPath} error:`, errorText);
+        console.error(`PUT /api${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`PUT ${path} network error:`, error);
+      console.error(`PUT /api${path} network error:`, error);
       throw error;
     }
   },
@@ -163,9 +160,9 @@ export const API = {
   async del<T>(path: string): Promise<T | undefined> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Deleting ${baseUrl}${path}`);
+      console.log(`Deleting ${baseUrl}/api${path}`);
       const fullPath = path.startsWith('/') ? path : `/${path}`;
-      const res = await fetch(`${baseUrl}${fullPath}`, {
+      const res = await fetch(`${baseUrl}/api${fullPath}`, {
         method: 'DELETE', 
         credentials: 'include',
         headers: {
@@ -173,17 +170,17 @@ export const API = {
         }
       });
       
-      console.log(`DELETE ${fullPath} response status:`, res.status);
+      console.log(`DELETE /api${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`DELETE ${fullPath} error:`, errorText);
+        console.error(`DELETE /api${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`DELETE ${path} network error:`, error);
+      console.error(`DELETE /api${path} network error:`, error);
       throw error;
     }
   },
