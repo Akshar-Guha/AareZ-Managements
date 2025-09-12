@@ -16,6 +16,8 @@
     "lint": "eslint . || true",
     "start": "vite preview",
     "deploy": "vercel --prod",
+    "deploy:frontend": "vercel --prod --local-config vercel-frontend.json",
+    "deploy:backend": "vercel --prod --local-config vercel-backend.json",
     "knex": "node --loader ts-node/esm ./node_modules/knex/bin/cli.js --knexfile knexfile.ts",
     "migrate:make": "npm run knex migrate:make -x ts",
     "migrate:latest": "npm run knex migrate:latest",

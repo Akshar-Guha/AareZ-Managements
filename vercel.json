@@ -1,68 +1,6 @@
 {
   "version": 2,
-  "name": "healthcare-manager",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build"
-    },
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/auth/(.*)",
-      "dest": "api/index.ts",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Allow-Credentials": "true"
-      }
-    },
-    {
-      "src": "/api/options/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400"
-      },
-      "dest": "api/index.ts"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.ts",
-      "headers": {
-        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
-        "Access-Control-Allow-Credentials": "true"
-      }
-    },
-    {
-      "src": "/assets/(.*\\.js)",
-      "headers": {
-        "Content-Type": "application/javascript"
-      },
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/assets/(.*\\.css)",
-      "headers": {
-        "Content-Type": "text/css"
-      },
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  "name": "healthcare-manager-monorepo",
   "env": {
     "NODE_ENV": "production",
     "CORS_ORIGIN": "https://aarez-mgnmt.vercel.app",
