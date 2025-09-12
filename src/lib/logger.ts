@@ -74,17 +74,22 @@ class Logger {
           const host = window.location.hostname;
           const origin = window.location.origin;
           const isLocalhost = host.includes('localhost') || host === '127.0.0.1' || /^(localhost|127\.0\.0\.1)(:\\d+)?$/.test(host);
+          
           if (!isLocalhost) {
             // In production, ignore localhost env overrides
             if (envBase && !/localhost/.test(envBase)) return envBase;
-            return origin; // same-origin on Vercel/custom domain
+            return `${origin}/api`; // same-origin on Vercel/custom domain
           }
           // Local development
-          return envBase || 'http://localhost:3100';
+          return envBase || 'http://localhost:5174/api';
         };
+        
+        const apiBase = resolveApiBase();
+        
         // Fire-and-forget; avoid blocking UI
-        fetch(`${resolveApiBase()}/api/logs`, {
+        fetch(`${apiBase}/logs`, {
           method: 'POST',
+          credentials: 'include', // Add credentials
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
