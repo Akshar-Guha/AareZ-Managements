@@ -14,7 +14,26 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.ts"
+      "dest": "api/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization"
+      }
+    },
+    {
+      "src": "/assets/(.*\\.js)",
+      "headers": {
+        "Content-Type": "application/javascript"
+      },
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/assets/(.*\\.css)",
+      "headers": {
+        "Content-Type": "text/css"
+      },
+      "dest": "/assets/$1"
     },
     {
       "src": "/(.*)",
