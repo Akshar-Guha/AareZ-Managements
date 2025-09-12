@@ -634,38 +634,41 @@ export function createApp() {
 
     // Browser/Client log ingestion endpoint (appears in Vercel Runtime Logs)
     app.post('/api/logs', (req: Request, res: Response) => {
-      try {
-        const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
-        const ctx = {
-          ...context,
-          timestamp: timestamp || new Date().toISOString(),
-          source: source || 'unknown',
-          url,
-          userAgent,
-          ip: req.ip,
-          requestId: req.headers['x-request-id']
-        } as Record<string, any>;
+      const { level = 'INFO', message = '', context = {}, timestamp, source, url, userAgent } = (req.body || {}) as any;
+      const payload = {
+        timestamp: timestamp || new Date().toISOString(),
+        source: source || 'browser',
+        url,
+        userAgent,
+        ip: req.ip,
+        requestId: req.headers['x-request-id'],
+        context
+      } as Record<string, any>;
 
-        switch (String(level).toUpperCase()) {
-          case 'ERROR':
-            Logger.error(message, ctx);
-            break;
-          case 'WARN':
-          case 'WARNING':
-            Logger.warn(message, ctx);
-            break;
-          case 'DEBUG':
-            Logger.debug(message, ctx);
-            break;
-          case 'INFO':
-          default:
-            Logger.info(message, ctx);
+      const safe = (obj: any) => {
+        try {
+          const seen = new WeakSet();
+          return JSON.stringify(obj, (k, v) => {
+            if (typeof v === 'bigint') return v.toString();
+            if (v && typeof v === 'object') {
+              if (seen.has(v)) return '[Circular]';
+              seen.add(v);
+            }
+            return v;
+          });
+        } catch {
+          return String(obj);
         }
-        res.status(204).end();
-      } catch (e) {
-        console.error('Failed to ingest client log', e);
-        res.status(200).json({ ok: true }); // avoid breaking client UI on log errors
-      }
+      };
+
+      const line = `${payload.timestamp} [${String(level).toUpperCase()}] ${message} ${safe(payload)}`;
+      const upper = String(level).toUpperCase();
+      if (upper === 'ERROR') console.error(line);
+      else if (upper === 'WARN' || upper === 'WARNING') console.warn(line);
+      else if (upper === 'DEBUG') console.debug(line);
+      else console.log(line);
+
+      res.status(204).end();
     });
 
     // Environment info route

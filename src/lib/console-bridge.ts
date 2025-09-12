@@ -15,12 +15,15 @@ if (typeof window !== 'undefined') {
 
   // Resolve API base URL similar to src/lib/api.ts logic
   const resolveApiBase = () => {
-    const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL;
+    const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
     const host = window.location.hostname;
+    const origin = window.location.origin;
+    const isLocalhost = host === 'localhost' || /^localhost:\\d+$/.test(host) || host.endsWith('.local');
+    // Prefer same-origin on non-localhost (Vercel prod/preview)
+    if (!isLocalhost) return origin;
+    // For localhost only, allow explicit env override or fallback to 3100
     if (envBase) return envBase;
-    if (host.includes('localhost')) return 'http://localhost:3100';
-    // Same-origin for production deployments on Vercel
-    return window.location.origin;
+    return 'http://localhost:3100';
   };
 
   const postLog = (level: 'INFO'|'WARN'|'ERROR'|'DEBUG', message: string, extra?: any) => {
