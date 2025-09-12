@@ -536,10 +536,10 @@ export function createApp() {
     });
 
     // Middleware to log all registered routes
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       const routes = app._router.stack
-        .filter(r => r.route)
-        .map(r => ({
+        .filter((r: any) => r.route)
+        .map((r: any) => ({
           method: Object.keys(r.route.methods)[0].toUpperCase(),
           path: r.route.path
         }));
@@ -560,7 +560,7 @@ export function createApp() {
     });
 
     // Catch-all middleware to log unmatched routes
-    app.use((req, res, next) => {
+    app.use((req: Request, res: Response, next: NextFunction) => {
       Logger.warn('Unmatched Route', {
         method: req.method,
         path: req.path,
@@ -573,7 +573,7 @@ export function createApp() {
     console.log('Adding diagnostic routes...');
     
     // Prometheus metrics endpoint
-    app.get('/metrics', async (req, res) => {
+    app.get('/metrics', async (req: Request, res: Response) => {
       res.set('Content-Type', register.contentType);
       res.end(await register.metrics());
     });
