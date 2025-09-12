@@ -8,6 +8,17 @@
   },
   "routes": [
     {
+      "src": "/api/auth/login",
+      "methods": ["POST"],
+      "dest": "api/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    },
+    {
       "src": "/api/(.*)",
       "dest": "api/index.ts",
       "headers": {
