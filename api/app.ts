@@ -573,7 +573,7 @@ export function createApp() {
         secure: true, // Always secure for Vercel
         sameSite: 'none' as const, // Explicitly set for cross-site cookies
         path: '/',
-        domain: '.vercel.app', // Set domain for broader cookie accessibility
+        domain: undefined, // Remove domain to allow broader cookie accessibility
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       };
       

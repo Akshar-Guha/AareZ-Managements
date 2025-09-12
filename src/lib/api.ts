@@ -14,18 +14,18 @@ const getApiBaseUrl = () => {
   let baseUrl: string;
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
-      // Explicitly set base URL for Vercel production
-      baseUrl = 'https://aarez-mgnmt.vercel.app';
+      // Explicitly set base URL for Vercel production with /api prefix
+      baseUrl = 'https://aarez-mgnmt.vercel.app/api';
     } else if (isLocalhost) {
-      // Local development fallback
-      baseUrl = 'http://localhost:3100';
+      // Local development fallback with explicit port for API
+      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174/api';
     } else {
-      // Fallback to window origin
-      baseUrl = windowOrigin;
+      // Fallback to window origin with /api prefix
+      baseUrl = `${windowOrigin}/api`;
     }
   } else {
     // Server-side rendering or other contexts fallback
-    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN || 'https://aarez-mgnmt.vercel.app';
+    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}/api` : 'https://aarez-mgnmt.vercel.app/api';
   }
   
   console.log('Determined base URL:', baseUrl);
@@ -38,9 +38,9 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API GET Request: ${path}`);
-      console.log(`Fetching GET ${baseUrl}/api${path}`);
+      console.log(`Fetching GET ${baseUrl}${path}`);
       
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      const res = await fetch(`${baseUrl}${path}`, {
         credentials: 'include', // Explicitly include credentials for cross-site requests
         headers: {
           'Accept': 'application/json',
@@ -48,7 +48,7 @@ export const API = {
         }
       });
       
-      console.log(`GET /api${path} response status:`, res.status);
+      console.log(`GET ${path} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
@@ -62,7 +62,7 @@ export const API = {
       console.groupEnd();
       return data;
     } catch (error) {
-      console.error(`GET /api${path} network error:`, error);
+      console.error(`GET ${path} network error:`, error);
       console.groupEnd();
       throw error;
     }
@@ -72,8 +72,20 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API POST Request: ${path}`);
-      console.log(`Posting to ${baseUrl}/api${path}`, body);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      console.log(`Posting to ${baseUrl}${path}`, body);
+      
+      // Log full request details
+      console.log('Full Request Details:', {
+        url: `${baseUrl}${path}`,
+        method: 'POST',
+        body: body ? JSON.stringify(body) : 'No body',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const res = await fetch(`${baseUrl}${path}`, {
         method: 'POST', 
         credentials: 'include', 
         headers: { 
@@ -83,11 +95,15 @@ export const API = {
         body: body ? JSON.stringify(body) : undefined 
       });
       
-      console.log(`POST /api${path} response status:`, res.status);
+      console.log(`POST ${path} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`POST /api${path} error:`, errorText);
+        console.error(`POST ${path} error:`, {
+          status: res.status,
+          statusText: res.statusText,
+          errorBody: errorText
+        });
         console.groupEnd();
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
@@ -97,7 +113,11 @@ export const API = {
       console.groupEnd();
       return data;
     } catch (error) {
-      console.error(`POST /api${path} network error:`, error);
+      console.error(`POST ${path} network error:`, {
+        errorName: error instanceof Error ? error.name : 'Unknown Error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : 'No stack trace'
+      });
       console.groupEnd();
       throw error;
     }
