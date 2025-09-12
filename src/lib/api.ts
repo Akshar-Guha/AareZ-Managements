@@ -39,9 +39,9 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API GET Request: ${path}`);
-      console.log(`Fetching GET ${baseUrl}/api${path}`);
+      console.log(`Fetching GET ${baseUrl}${path}`);
       
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      const res = await fetch(`${baseUrl}${path}`, {
         credentials: 'include',
         headers: {
           'Accept': 'application/json',
@@ -73,8 +73,8 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API POST Request: ${path}`);
-      console.log(`Posting to ${baseUrl}/api${path}`, body);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      console.log(`Posting to ${baseUrl}${path}`, body);
+      const res = await fetch(`${baseUrl}${path}`, {
         method: 'POST', 
         credentials: 'include', 
         headers: { 
@@ -107,8 +107,8 @@ export const API = {
   async put<T>(path: string, body?: any): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Putting to ${baseUrl}/api${path}`, body);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      console.log(`Putting to ${baseUrl}${path}`, body);
+      const res = await fetch(`${baseUrl}${path}`, {
         method: 'PUT', 
         credentials: 'include', 
         headers: { 
@@ -133,11 +133,11 @@ export const API = {
     }
   },
   
-  async del<T>(path: string): Promise<T> {
+  async del<T>(path: string): Promise<T | undefined> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Deleting ${baseUrl}/api${path}`);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      console.log(`Deleting ${baseUrl}${path}`);
+      const res = await fetch(`${baseUrl}${path}`, {
         method: 'DELETE', 
         credentials: 'include',
         headers: {
@@ -145,17 +145,17 @@ export const API = {
         }
       });
       
-      console.log(`DELETE /api${path} response status:`, res.status);
+      console.log(`DELETE ${path} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`DELETE /api${path} error:`, errorText);
+        console.error(`DELETE ${path} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`DELETE /api${path} network error:`, error);
+      console.error(`DELETE ${path} network error:`, error);
       throw error;
     }
   },
