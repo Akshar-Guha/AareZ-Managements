@@ -336,6 +336,8 @@ export function createApp() {
     
     const corsOptions = {
       origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+        console.log('CORS: Received origin:', origin); // Add this line for debugging
+        
         // Allow requests with no origin (like mobile apps, curl, Postman)
         if (!origin) {
           Logger.info('Allowing request with no origin');
@@ -347,6 +349,8 @@ export function createApp() {
           'https://aarez-mgnmt.vercel.app',
           'http://localhost:5173',
           'https://localhost:5173',
+          'http://localhost:5174',
+          'https://localhost:5174',
           /^https:\/\/.*\.vercel\.app$/
         ];
         
@@ -586,24 +590,59 @@ export function createApp() {
 
     function requireAuth(req: Request & { user?: Record<string, any> }, res: Response, next: NextFunction) {
       const token = req.cookies.token;
-      Logger.info('requireAuth middleware entered', {
+      const JWT_SECRET = process.env.JWT_SECRET || 'fallback-dev-secret';
+      
+      Logger.info('requireAuth middleware detailed logging', {
         tokenPresent: !!token,
-        jwtSecretSet: !!JWT_SECRET // Check if JWT_SECRET is available
+        jwtSecretSet: !!process.env.JWT_SECRET,
+        cookieHeaders: req.headers.cookie,
+        requestPath: req.path
       });
       
       if (!token) {
-        Logger.warn('No token found in cookies, unauthorized access attempt');
-        return res.status(401).json({ error: 'Unauthorized' });
+        Logger.warn('No token found in cookies, unauthorized access attempt', {
+          path: req.path,
+          method: req.method,
+          headers: redactSensitive(req.headers)
+        });
+        return res.status(401).json({ 
+          error: 'Unauthorized', 
+          details: 'No authentication token found',
+          suggestedAction: 'Please log in again'
+        });
       }
       
       try {
         Logger.info('Attempting to verify JWT token...');
         req.user = jwt.verify(token, JWT_SECRET) as Record<string, any>;
-        Logger.info('JWT token verified successfully', { userId: req.user.id, userRole: req.user.role });
+        
+        // Additional validation for user object
+        if (!req.user || !req.user.id) {
+          throw new Error('Invalid token payload');
+        }
+        
+        Logger.info('JWT token verified successfully', { 
+          userId: req.user.id, 
+          userRole: req.user.role 
+        });
+        
         next();
       } catch (e: unknown) {
-        Logger.error('Authentication failed during JWT verification', { error: String(e) });
-        res.status(401).json({ error: 'Unauthorized' });
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        
+        Logger.error('Authentication failed during JWT verification', { 
+          error: errorMessage,
+          tokenPresent: !!token,
+          tokenLength: token ? token.length : 0,
+          path: req.path
+        });
+        
+        // Provide more informative error response
+        res.status(401).json({ 
+          error: 'Authentication Failed', 
+          details: errorMessage,
+          suggestedAction: 'Please log in again'
+        });
       }
     }
 
@@ -893,11 +932,62 @@ export function createApp() {
     app.get('/api/auth/me', requireAuth, async (req: Request & { user?: { id: number } }, res: Response) => {
       try {
         const { id } = req.user || {};
-        const result = await getPool().query('SELECT id, name, email, role FROM users WHERE id = $1', [id]);
-        res.json(result.rows[0] || null);
+        
+        // Validate user ID
+        if (!id) {
+          Logger.warn('Invalid user ID in /api/auth/me request', {
+            user: req.user,
+            headers: redactSensitive(req.headers)
+          });
+          return res.status(400).json({ 
+            error: 'Invalid User', 
+            details: 'Unable to retrieve user information',
+            suggestedAction: 'Please log in again'
+          });
+        }
+        
+        // Detailed database query with performance tracking
+        const result = await trackQueryPerformance('fetch_user_details', () => 
+          getPool().query('SELECT id, name, email, role FROM users WHERE id = $1', [id])
+        );
+        
+        // Log query details
+        Logger.info('User fetch details', {
+          userId: id,
+          rowCount: result.rowCount,
+          querySuccessful: result.rowCount > 0
+        });
+        
+        // Handle case where no user is found
+        if (result.rowCount === 0) {
+          Logger.warn('No user found for given ID', { 
+            userId: id,
+            requestHeaders: redactSensitive(req.headers)
+          });
+          return res.status(404).json({ 
+            error: 'User Not Found', 
+            details: 'No user exists with the provided authentication',
+            suggestedAction: 'Please log in again'
+          });
+        }
+        
+        // Return user details
+        res.json(result.rows[0]);
       } catch (e: unknown) {
-        Logger.error('Me error', { error: String(e) });
-        res.status(500).json({ error: 'Failed to fetch user' });
+        // Enhanced error logging
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        
+        Logger.error('Error in /api/auth/me endpoint', { 
+          error: errorMessage,
+          userId: req.user?.id,
+          stack: e instanceof Error ? e.stack : 'No stack trace'
+        });
+        
+        res.status(500).json({ 
+          error: 'Internal Server Error', 
+          details: 'Failed to fetch user details',
+          suggestedAction: 'Please try logging in again or contact support'
+        });
       }
     });
 

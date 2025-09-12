@@ -28,23 +28,57 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
     try {
       console.group('CheckAuth Process');
       console.log('Starting authentication check');
-      const user = await API.get<User>('/auth/me');
-      console.log('Raw API response for /auth/me:', user); // Added log for raw API response
-      console.log('CheckAuth result:', {
-        userFound: !!user,
-        userDetails: user ? {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        } : null
-      });
-      set({ user, isAuthenticated: !!user, isLoading: false });
+      
+      try {
+        const user = await API.get<User>('/auth/me');
+        console.log('Raw API response for /auth/me:', user);
+        
+        console.log('CheckAuth result:', {
+          userFound: !!user,
+          userDetails: user ? {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          } : null
+        });
+        
+        set({ user, isAuthenticated: !!user, isLoading: false });
+      } catch (apiError: any) {
+        // Handle specific error scenarios
+        console.error('Auth check API error:', apiError);
+        
+        // Check for specific error responses
+        const errorDetails = apiError.response?.data || {};
+        const errorMessage = errorDetails.details || 'Authentication failed';
+        const suggestedAction = errorDetails.suggestedAction || 'Please log in';
+        
+        console.warn('Authentication Error Details:', {
+          message: errorMessage,
+          suggestedAction,
+          fullError: apiError
+        });
+        
+        // Clear any existing authentication state
+        set({ 
+          user: null, 
+          isAuthenticated: false, 
+          isLoading: false 
+        });
+      }
+      
       console.groupEnd();
     } catch (error) {
-      console.group('CheckAuth Error');
-      console.error('Auth check failed:', error);
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      console.group('CheckAuth Unexpected Error');
+      console.error('Unexpected auth check error:', error);
+      
+      // Fallback error handling
+      set({ 
+        user: null, 
+        isAuthenticated: false, 
+        isLoading: false 
+      });
+      
       console.groupEnd();
     }
   },

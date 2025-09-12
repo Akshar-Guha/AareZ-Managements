@@ -16,18 +16,20 @@
       "src": "/api/auth/(.*)",
       "dest": "api/index.ts",
       "headers": {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
         "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization"
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+        "Access-Control-Allow-Credentials": "true"
       }
     },
     {
       "src": "/api/options/(.*)",
       "methods": ["OPTIONS"],
       "headers": {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
         "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Max-Age": "86400"
       },
       "dest": "api/index.ts"
@@ -36,9 +38,10 @@
       "src": "/api/(.*)",
       "dest": "api/index.ts",
       "headers": {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "https://aarez-mgnmt.vercel.app",
         "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type,Authorization"
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+        "Access-Control-Allow-Credentials": "true"
       }
     },
     {
@@ -63,7 +66,9 @@
   "env": {
     "NODE_ENV": "production",
     "CORS_ORIGIN": "https://aarez-mgnmt.vercel.app",
-    "MIGRATE_ON_START": "true"
+    "MIGRATE_ON_START": "true",
+    "JWT_SECRET": "@jwt_secret",
+    "DATABASE_URL": "@database_url"
   },
   "build": {
     "env": {
