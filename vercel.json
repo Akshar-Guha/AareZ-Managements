@@ -1,32 +1,29 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "builds": [
+    {
+      "src": "api/app.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.ts"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/src/(.*)",
-      "dest": "/src/$1"
+      "dest": "api/app.ts"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "dist/index.html"
     }
   ],
   "env": {
-    "NODE_OPTIONS": "--enable-source-maps",
-    "LOG_LEVEL": "info",
-    "CORS_ORIGIN": "http://localhost:5173,https://aarez-mgnmt.vercel.app",
-    "VERCEL_LOGGING": "true"
-  },
-  "regions": ["iad1"],
-  "framework": "vite"
+    "NODE_VERSION": "22.x"
+  }
 }

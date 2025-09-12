@@ -1,5 +1,5 @@
 {
-  "name": "healthcare-manager-clone",
+  "name": "healthcare-manager",
   "engines": {
     "node": "22.x"
   },
@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n api,web -c blue,green \"npm:dev:server\" \"vite\"",
     "dev:server": "tsx api-local/server.ts",
     "build": "vite build && tsc --project tsconfig.json",
-    "vercel-build": "npm run build",
+    "vercel-build": "npm run build && npm run migrate:latest",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 5173 --strictPort",
     "lint": "eslint . || true",
@@ -22,7 +22,12 @@
     "migrate:rollback": "npm run knex migrate:rollback",
     "monitor:up": "docker-compose up -d prometheus grafana",
     "monitor:down": "docker-compose down",
-    "monitor:logs": "docker-compose logs -f prometheus grafana"
+    "monitor:logs": "docker-compose logs -f prometheus grafana",
+    "mcp:neon": "npx mcp-remote https://mcp.neon.tech/mcp",
+    "mcp:vercel": "npx vercel-mcp https://mcp.vercel.com/api",
+    "mcp:cursor": "npx cursor-mcp https://mcp.cursor.so/api",
+    "mcp:sync": "npx mcp-sync",
+    "mcp:test": "npx mcp-test"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
