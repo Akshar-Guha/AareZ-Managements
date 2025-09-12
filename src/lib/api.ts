@@ -24,7 +24,7 @@ const getApiBaseUrl = () => {
     // Local development: allow override via env or default to local API
     baseUrl = envBaseUrl || 'http://localhost:3100';
   }
-
+  console.log('Vite Environment Variables:', import.meta.env); // Added to check all Vite environment variables
   console.log('Environment Base URL:', envBaseUrl);
   console.log('Window Hostname:', windowHostname);
   console.log('Window Origin:', windowOrigin);

@@ -158,6 +158,7 @@ let pool: Pool | null = null;
 const DATABASE_URL = process.env.DATABASE_URL;
 
 function getPool(): Pool {
+  Logger.info('getPool function called', { databaseUrlPresent: !!DATABASE_URL });
   if (!DATABASE_URL) {
     console.warn('DATABASE_URL not set. API will error until it is configured.');
     throw new Error('DATABASE_URL is required');
@@ -533,17 +534,34 @@ export function createApp() {
       
       // Set cookie and log details
       res.cookie('token', token, cookieOptions);
-      Logger.info(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`);
+      Logger.info(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`, {
+        cookieOptions,
+        isProd,
+        hostname,
+        isVercel,
+        jwtSecretSet: !!JWT_SECRET // Indicate if JWT_SECRET is set
+      });
     }
 
     function requireAuth(req: Request & { user?: Record<string, any> }, res: Response, next: NextFunction) {
       const token = req.cookies.token;
-      if (!token) return res.status(401).json({ error: 'Unauthorized' });
+      Logger.info('requireAuth middleware entered', {
+        tokenPresent: !!token,
+        jwtSecretSet: !!JWT_SECRET // Check if JWT_SECRET is available
+      });
+      
+      if (!token) {
+        Logger.warn('No token found in cookies, unauthorized access attempt');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
       try {
+        Logger.info('Attempting to verify JWT token...');
         req.user = jwt.verify(token, JWT_SECRET) as Record<string, any>;
+        Logger.info('JWT token verified successfully', { userId: req.user.id, userRole: req.user.role });
         next();
       } catch (e: unknown) {
-        Logger.error('Authentication failed', { error: String(e) });
+        Logger.error('Authentication failed during JWT verification', { error: String(e) });
         res.status(401).json({ error: 'Unauthorized' });
       }
     }

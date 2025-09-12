@@ -29,14 +29,15 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
       console.group('CheckAuth Process');
       console.log('Starting authentication check');
       const user = await API.get<User>('/auth/me');
-      console.log('CheckAuth result:', { 
-        userFound: !!user, 
+      console.log('Raw API response for /auth/me:', user); // Added log for raw API response
+      console.log('CheckAuth result:', {
+        userFound: !!user,
         userDetails: user ? {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role
-        } : null 
+        } : null
       });
       set({ user, isAuthenticated: !!user, isLoading: false });
       console.groupEnd();
