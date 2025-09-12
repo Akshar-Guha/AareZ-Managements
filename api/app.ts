@@ -782,7 +782,12 @@ export function createApp() {
       });
     });
 
-    // Health check route with comprehensive info
+    app.get('/api/simple-health', (req, res) => {
+      Logger.info('Simple health check endpoint hit');
+      res.status(200).json({ status: 'OK', message: 'Server is running.' });
+    });
+
+    // Existing Health check route with comprehensive info
     app.get('/api/health', async (req, res) => {
       Logger.info('Health endpoint hit');
       try {
