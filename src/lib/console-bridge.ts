@@ -18,9 +18,13 @@ if (typeof window !== 'undefined') {
     const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
     const host = window.location.hostname;
     const origin = window.location.origin;
-    const isLocalhost = host === 'localhost' || /^localhost:\\d+$/.test(host) || host.endsWith('.local');
+    const isLocalhost = host === 'localhost' || /^localhost:\\d+$/.test(host) || host.endsWith('.local') || host === '127.0.0.1';
     // Prefer same-origin on non-localhost (Vercel prod/preview)
-    if (!isLocalhost) return origin;
+    if (!isLocalhost) {
+      // Ignore envBase if it points to localhost in production
+      if (envBase && !/localhost/.test(envBase)) return envBase;
+      return origin;
+    }
     // For localhost only, allow explicit env override or fallback to 3100
     if (envBase) return envBase;
     return 'http://localhost:3100';

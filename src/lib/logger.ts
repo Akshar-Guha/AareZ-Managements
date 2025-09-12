@@ -70,11 +70,17 @@ class Logger {
           return;
         }
         const resolveApiBase = () => {
-          const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL;
+          const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
           const host = window.location.hostname;
-          if (envBase) return envBase;
-          if (host.includes('localhost')) return 'http://localhost:3100';
-          return window.location.origin; // same-origin on Vercel
+          const origin = window.location.origin;
+          const isLocalhost = host.includes('localhost') || host === '127.0.0.1' || /^(localhost|127\.0\.0\.1)(:\\d+)?$/.test(host);
+          if (!isLocalhost) {
+            // In production, ignore localhost env overrides
+            if (envBase && !/localhost/.test(envBase)) return envBase;
+            return origin; // same-origin on Vercel/custom domain
+          }
+          // Local development
+          return envBase || 'http://localhost:3100';
         };
         // Fire-and-forget; avoid blocking UI
         fetch(`${resolveApiBase()}/api/logs`, {
