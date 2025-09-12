@@ -19,7 +19,6 @@ async function getApp() {
         console.log('Schema migration completed on cold start.');
       } catch (err) {
         console.error('Schema migration failed on cold start:', err);
-        // Standard console error for tracking
         console.error('Cold-start schema migration error:', err);
       }
     }
@@ -34,6 +33,17 @@ async function getApp() {
 export default async function handler(req: Request, res: Response) {
   console.log('Serverless function invoked:', req.method, req.url);
   
+  // Explicit CORS headers for all responses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // Handle OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
   try {
     const { handler } = await getApp();
     // Set custom headers for debugging
@@ -44,7 +54,7 @@ export default async function handler(req: Request, res: Response) {
   } catch (error) {
     console.error('Serverless handler error:', error);
     
-    // Standard console error for tracking
+    // Detailed error logging
     console.error('Serverless handler detailed error:', {
       message: error instanceof Error ? error.message : String(error),
       method: req.method,
