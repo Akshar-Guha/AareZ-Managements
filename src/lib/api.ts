@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
   let baseUrl: string;
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
-      // Explicitly set base URL for Vercel production with /api prefix
+      // Explicitly set base URL for Vercel production
       baseUrl = 'https://aarez-mgnmt.vercel.app/api';
     } else if (isLocalhost) {
       // Local development fallback with explicit port for API
@@ -40,7 +40,9 @@ export const API = {
       console.group(`API GET Request: ${path}`);
       console.log(`Fetching GET ${baseUrl}${path}`);
       
-      const res = await fetch(`${baseUrl}${path}`, {
+      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      
+      const res = await fetch(`${baseUrl}${fullPath}`, {
         credentials: 'include', // Explicitly include credentials for cross-site requests
         headers: {
           'Accept': 'application/json',
@@ -48,11 +50,11 @@ export const API = {
         }
       });
       
-      console.log(`GET ${path} response status:`, res.status);
+      console.log(`GET ${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`GET /api${path} error:`, errorText);
+        console.error(`GET ${fullPath} error:`, errorText);
         console.groupEnd();
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
@@ -74,9 +76,11 @@ export const API = {
       console.group(`API POST Request: ${path}`);
       console.log(`Posting to ${baseUrl}${path}`, body);
       
+      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      
       // Log full request details
       console.log('Full Request Details:', {
-        url: `${baseUrl}${path}`,
+        url: `${baseUrl}${fullPath}`,
         method: 'POST',
         body: body ? JSON.stringify(body) : 'No body',
         headers: {
@@ -85,7 +89,7 @@ export const API = {
         }
       });
 
-      const res = await fetch(`${baseUrl}${path}`, {
+      const res = await fetch(`${baseUrl}${fullPath}`, {
         method: 'POST', 
         credentials: 'include', 
         headers: { 
@@ -95,11 +99,11 @@ export const API = {
         body: body ? JSON.stringify(body) : undefined 
       });
       
-      console.log(`POST ${path} response status:`, res.status);
+      console.log(`POST ${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`POST ${path} error:`, {
+        console.error(`POST ${fullPath} error:`, {
           status: res.status,
           statusText: res.statusText,
           errorBody: errorText
@@ -127,7 +131,8 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.log(`Putting to ${baseUrl}/api${path}`, body);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      const res = await fetch(`${baseUrl}/api${fullPath}`, {
         method: 'PUT', 
         credentials: 'include', 
         headers: { 
@@ -137,11 +142,11 @@ export const API = {
         body: JSON.stringify(body) 
       });
       
-      console.log(`PUT /api${path} response status:`, res.status);
+      console.log(`PUT /api${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`PUT /api${path} error:`, errorText);
+        console.error(`PUT /api${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
@@ -156,7 +161,8 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.log(`Deleting ${baseUrl}/api${path}`);
-      const res = await fetch(`${baseUrl}/api${path}`, {
+      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      const res = await fetch(`${baseUrl}/api${fullPath}`, {
         method: 'DELETE', 
         credentials: 'include',
         headers: {
@@ -164,11 +170,11 @@ export const API = {
         }
       });
       
-      console.log(`DELETE /api${path} response status:`, res.status);
+      console.log(`DELETE /api${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`DELETE /api${path} error:`, errorText);
+        console.error(`DELETE /api${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
