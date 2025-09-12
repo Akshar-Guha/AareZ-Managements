@@ -8,9 +8,6 @@ import { Pool, QueryResult } from 'pg';
 import bcrypt from 'bcrypt';
 import Logger from '../src/lib/logger';
 
-// Add type imports at the top of the file
-import { Request, Response, NextFunction } from 'express';
-
 // Type assertion and helper functions
 function assertResult<T>(result: unknown): T {
   return result as T;
@@ -481,11 +478,12 @@ export function createApp() {
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
     // Auth functions
-    function signToken(payload: any) {
+    function signToken(payload: Record<string, any>) {
       return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
     }
 
-    function setAuthCookie(res: any, token: string) {
+    // Modify the setAuthCookie function to use correct types
+    function setAuthCookie(res: Response, token: string) {
       const isProd = process.env.NODE_ENV === 'production';
       const hostname = res.req?.headers?.host || '';
       const isVercel = hostname.includes('vercel.app');
@@ -500,7 +498,7 @@ export function createApp() {
       const cookieOptions = {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' : 'lax', // 'none' allows cookies in cross-site requests with secure flag
+        sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax', // Explicitly type sameSite
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       };
@@ -510,11 +508,11 @@ export function createApp() {
       Logger.info(`Auth cookie set with options: ${JSON.stringify(cookieOptions)}`);
     }
 
-    function requireAuth(req: any, res: any, next: any) {
+    function requireAuth(req: Request & { user?: Record<string, any> }, res: Response, next: NextFunction) {
       const token = req.cookies.token;
       if (!token) return res.status(401).json({ error: 'Unauthorized' });
       try {
-        req.user = jwt.verify(token, JWT_SECRET);
+        req.user = jwt.verify(token, JWT_SECRET) as Record<string, any>;
         next();
       } catch (e: unknown) {
         Logger.error('Authentication failed', { error: String(e) });
@@ -538,8 +536,8 @@ export function createApp() {
     // Middleware to log all registered routes
     app.use((req: Request, res: Response, next: NextFunction) => {
       const routes = app._router.stack
-        .filter((r: any) => r.route)
-        .map((r: any) => ({
+        .filter((r: { route?: any }) => r.route)
+        .map((r: { route: { methods: Record<string, boolean>, path: string } }) => ({
           method: Object.keys(r.route.methods)[0].toUpperCase(),
           path: r.route.path
         }));
@@ -760,9 +758,9 @@ export function createApp() {
       }
     });
 
-    app.get('/api/auth/me', requireAuth, async (req: any, res) => {
+    app.get('/api/auth/me', requireAuth, async (req: Request & { user?: { id: number } }, res: Response) => {
       try {
-        const { id } = req.user;
+        const { id } = req.user || {};
         const result = await getPool().query('SELECT id, name, email, role FROM users WHERE id = $1', [id]);
         res.json(result.rows[0] || null);
       } catch (e: unknown) {
@@ -777,7 +775,7 @@ export function createApp() {
     });
 
     // Doctors routes
-    app.get('/api/doctors', requireAuth, async (req: any, res) => {
+    app.get('/api/doctors', requireAuth, async (req: Request & { user?: { id: number } }, res: Response) => {
       try {
         const result = await getPool().query('SELECT * FROM doctors ORDER BY created_at DESC LIMIT 100');
         res.json(result.rows);
@@ -787,7 +785,7 @@ export function createApp() {
       }
     });
 
-    app.post('/api/doctors', requireAuth, async (req: any, res) => {
+    app.post('/api/doctors', requireAuth, async (req: Request & { user?: { id: number } }, res: Response) => {
       try {
         const { code = '', name = '', specialty = '' } = req.body;
         const result = await trackQueryPerformance('create_doctor', () => 
@@ -796,7 +794,7 @@ export function createApp() {
         
         // Log user activity for doctor creation
         await logUserActivity(
-          req.user.id, 
+          req.user?.id || null, 
           'create', 
           'doctor', 
           assertResult<any>(result.rows[0]).id, // Use assertResult here
