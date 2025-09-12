@@ -1,19 +1,16 @@
 // API base URL - use environment-specific URLs
 const getApiBaseUrl = () => {
   console.group('API Base URL Determination');
-  console.log('Current hostname:', window.location.hostname);
   
-  // Check if we're running in a Vercel production environment
-  if (window.location.hostname.includes('vercel.app')) {
-    console.log('Detected Vercel environment');
-    console.groupEnd();
-    return 'https://aarez-mgnmt.vercel.app';  // Use full URL for Vercel
-  }
+  // Use environment variable for base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 
+                  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') 
+                    ? 'https://aarez-mgnmt.vercel.app' 
+                    : 'http://localhost:3100');
   
-  // Local development
-  console.log('Using local development URL');
+  console.log('Determined base URL:', baseUrl);
   console.groupEnd();
-  return 'http://localhost:3100';  // Local API server
+  return baseUrl;
 };
 
 export const API = {

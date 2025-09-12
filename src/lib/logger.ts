@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 enum LogLevel {
   ERROR = 'ERROR',
   WARN = 'WARN',
@@ -17,8 +14,8 @@ interface LogEntry {
 
 class Logger {
   private static logLevel: LogLevel = LogLevel.INFO;
-  private static isVercel: boolean = process.env.VERCEL === '1';
-  private static isLoggingEnabled: boolean = process.env.VERCEL_LOGGING === 'true';
+  private static isVercel: boolean = false;
+  private static isLoggingEnabled: boolean = true;
 
   static configure(options: { 
     level?: LogLevel 
@@ -98,7 +95,7 @@ class Logger {
 
 // Configure logger based on environment
 Logger.configure({
-  level: process.env.NODE_ENV === 'production' ? LogLevel.WARN : LogLevel.DEBUG
+  level: LogLevel.DEBUG
 });
 
 export default Logger;

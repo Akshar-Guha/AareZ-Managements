@@ -187,8 +187,8 @@ function InvestmentModal({ open, onClose, onSaved, loading, setLoading, investme
         // doctor_id is now handled by backend
         amount: form.amount,
         investment_date: form.date,
-        expected_returns: form.expected,
-        actual_returns: form.actual,
+        expected_returns: form.expected || null,
+        actual_returns: form.actual || null,
         preferences: form.preferences,
         notes: form.notes,
       };

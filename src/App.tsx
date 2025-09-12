@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from '@/stores/useAuthStore';
-import SignIn from './pages/SignIn';
+import Login from './pages/Login';
 import Layout from './components/Layout';
 import { PrivateRoute } from './components/PrivateRoute';
 import Dashboard from './pages/Dashboard';
@@ -63,7 +63,7 @@ export function App() {
     <>
       <Toaster position="top-center" richColors />
       <Routes>
-        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/sign-in" element={<Login />} />
         <Route element={<PrivateRoute />}>
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
@@ -77,6 +77,7 @@ export function App() {
             <Route path="ocr" element={<OCRPage />} />
           </Route>
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

@@ -26,11 +26,25 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
   checkAuth: async () => {
     set({ isLoading: true });
     try {
+      console.group('CheckAuth Process');
+      console.log('Starting authentication check');
       const user = await API.get<User>('/auth/me');
+      console.log('CheckAuth result:', { 
+        userFound: !!user, 
+        userDetails: user ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        } : null 
+      });
       set({ user, isAuthenticated: !!user, isLoading: false });
+      console.groupEnd();
     } catch (error) {
+      console.group('CheckAuth Error');
       console.error('Auth check failed:', error);
       set({ user: null, isAuthenticated: false, isLoading: false });
+      console.groupEnd();
     }
   },
 

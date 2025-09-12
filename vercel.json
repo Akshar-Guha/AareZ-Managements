@@ -1,16 +1,17 @@
 {
   "version": 2,
+  "name": "healthcare-manager",
   "builds": [
-    {
-      "src": "api/app.ts",
-      "use": "@vercel/node"
-    },
     {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist"
       }
+    },
+    {
+      "src": "api/app.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -22,8 +23,5 @@
       "src": "/(.*)",
       "dest": "dist/index.html"
     }
-  ],
-  "env": {
-    "NODE_VERSION": "22.x"
-  }
+  ]
 }

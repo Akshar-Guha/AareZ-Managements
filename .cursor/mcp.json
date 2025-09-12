@@ -1,0 +1,101 @@
+{
+  "mcpServers": {
+    "Neon": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote@latest", "https://mcp.neon.tech/mcp"],
+      "description": "Neon PostgreSQL Database Management",
+      "authentication": {
+        "method": "oauth",
+        "scopes": ["projects:read", "databases:manage", "branches:create"]
+      },
+      "capabilities": [
+        "list_projects",
+        "create_project",
+        "run_sql",
+        "database_migrations"
+      ]
+    },
+    "Vercel": {
+      "command": "npx",
+      "args": ["-y", "vercel-mcp@latest", "https://mcp.vercel.com/api"],
+      "description": "Vercel Deployment and Hosting Management",
+      "authentication": {
+        "method": "token",
+        "token": "7X6Tov3qHknV4WEDK03n2BpS",
+        "scopes": [
+          "deployments:read",
+          "deployments:write",
+          "projects:read",
+          "projects:write",
+          "teams:read",
+          "user:read"
+        ]
+      },
+      "configuration": {
+        "project_name": "aarez-mgnmt",
+        "deployment_branch": "main",
+        "build_command": "npm run build",
+        "output_directory": "dist"
+      },
+      "capabilities": [
+        "list_deployments",
+        "create_deployment",
+        "manage_environments",
+        "project_configuration",
+        "team_management"
+      ],
+      "environment_variables": {
+        "required": [
+          "DATABASE_URL",
+          "JWT_SECRET",
+          "AXIOM_TOKEN",
+          "NODE_ENV"
+        ]
+      }
+    },
+    "Cursor": {
+      "command": "npx",
+      "args": ["-y", "cursor-mcp@latest", "https://mcp.cursor.so/api"],
+      "description": "Cursor IDE and Development Workflow Management",
+      "authentication": {
+        "method": "integrated",
+        "scope": "workspace:full"
+      },
+      "capabilities": [
+        "code_generation",
+        "refactoring",
+        "context_aware_completion",
+        "project_analysis"
+      ]
+    }
+  },
+  "environment": {
+    "current_project": "/mnt/ssd/projects/Manager",
+    "development_mode": true,
+    "supported_languages": ["typescript", "javascript", "sql"]
+  },
+  "security": {
+    "authorized_actions": [
+      "read_only_queries",
+      "development_operations"
+    ],
+    "access_control": {
+      "require_human_confirmation": true,
+      "allowed_environments": ["development", "staging"]
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "log_level": "info",
+    "log_path": "/mnt/ssd/projects/Manager/logs/mcp.log"
+  },
+  "integrations": {
+    "auto_sync": true,
+    "sync_intervals": {
+      "neon_projects": "hourly",
+      "vercel_deployments": "15m",
+      "cursor_context": "realtime",
+      "environment_checks": "hourly"
+    }
+  }
+}
