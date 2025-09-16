@@ -1,17 +1,16 @@
 {
   "version": 2,
   "name": "healthcare-manager-monorepo",
-  "functions": {
-    "api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 10,
-      "runtime": "@vercel/node@20"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api"
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
     }
   ]
 }
