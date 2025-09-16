@@ -106,31 +106,49 @@ export default async function handler(req: Request, res: Response) {
     return res.status(204).end();
   }
 
+  // Add simple health check endpoint (no database required)
+  if (req.url === '/api/ping') {
+    console.log('api/index.ts: Ping endpoint called');
+    return res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      message: 'Vercel function is working'
+    });
+  }
+
   // Add diagnostic endpoint
   if (req.url === '/api/diagnostic') {
     console.log('api/index.ts: Diagnostic endpoint called');
-    const diagnostic = {
-      timestamp: new Date().toISOString(),
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-        JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
-        CORS_ORIGIN: process.env.CORS_ORIGIN,
-        MIGRATE_ON_START: process.env.MIGRATE_ON_START
-      },
-      request: {
-        method: req.method,
-        url: req.url,
-        headers: {
-          host: req.headers.host,
-          'user-agent': req.headers['user-agent'],
-          origin: req.headers.origin
+    try {
+      const diagnostic = {
+        timestamp: new Date().toISOString(),
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+          JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+          CORS_ORIGIN: process.env.CORS_ORIGIN,
+          MIGRATE_ON_START: process.env.MIGRATE_ON_START
+        },
+        request: {
+          method: req.method,
+          url: req.url,
+          headers: {
+            host: req.headers.host,
+            'user-agent': req.headers['user-agent'],
+            origin: req.headers.origin
+          }
         }
-      }
-    };
+      };
 
-    console.log('api/index.ts: Diagnostic info:', diagnostic);
-    return res.json(diagnostic);
+      console.log('api/index.ts: Diagnostic info:', diagnostic);
+      return res.json(diagnostic);
+    } catch (error) {
+      console.error('api/index.ts: Diagnostic error:', error);
+      return res.json({
+        error: 'Diagnostic failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 
   try {
