@@ -77,15 +77,32 @@ async function getApp() {
 }
 
 export default async function handler(req: Request, res: Response) {
-  console.log(`api/index.ts: Handler invoked for: ${req.method} ${req.url}`);
-  console.log(`api/index.ts: Request Headers (partial): Host=${req.headers.host}, User-Agent=${req.headers['user-agent']}`);
+  const requestId = req.headers['x-request-id'] || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`[${requestId}] 🚀 API Request: ${req.method} ${req.url}`);
+  console.log(`[${requestId}] 📋 Request Details:`, {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    query: req.query,
+    headers: {
+      host: req.headers.host,
+      'user-agent': req.headers['user-agent'],
+      'content-type': req.headers['content-type'],
+      'authorization': req.headers.authorization ? '[PRESENT]' : '[NOT SET]',
+      'cookie': req.headers.cookie ? '[PRESENT]' : '[NOT SET]'
+    },
+    body: req.method !== 'GET' ? (req.body ? '[PRESENT]' : '[EMPTY]') : '[N/A]',
+    timestamp: new Date().toISOString()
+  });
 
   // DEBUG: Log all environment variables at handler level
-  console.log('api/index.ts: DEBUG - Environment variables check:');
-  console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET (length: ' + process.env.DATABASE_URL.length + ')' : 'NOT SET');
-  console.log('  JWT_SECRET:', process.env.JWT_SECRET ? 'SET (length: ' + process.env.JWT_SECRET.length + ')' : 'NOT SET');
-  console.log('  NODE_ENV:', process.env.NODE_ENV);
-  console.log('  CORS_ORIGIN:', process.env.CORS_ORIGIN);
+  console.log(`[${requestId}] 🔧 Environment Variables Check:`, {
+    DATABASE_URL: process.env.DATABASE_URL ? `SET (length: ${process.env.DATABASE_URL.length})` : 'NOT SET ❌',
+    JWT_SECRET: process.env.JWT_SECRET ? `SET (length: ${process.env.JWT_SECRET.length})` : 'NOT SET ❌',
+    NODE_ENV: process.env.NODE_ENV || 'NOT SET',
+    CORS_ORIGIN: process.env.CORS_ORIGIN || 'NOT SET',
+    MIGRATE_ON_START: process.env.MIGRATE_ON_START || 'NOT SET'
+  });
 
   // Improved CORS handling
   const origin = req.headers.origin || '';

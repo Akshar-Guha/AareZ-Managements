@@ -84,22 +84,60 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
   },
 
   login: async (email: string, password: string) => {
+    const loginId = `login_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[${loginId}] 🔐 FRONTEND LOGIN STARTED`);
+    console.log(`[${loginId}] 📧 Email: ${email}`);
+    console.log(`[${loginId}] 🔑 Password: [PROVIDED] (length: ${password?.length || 0})`);
+
     try {
-      console.group('Login Process');
-      console.log('Attempting login for:', email);
-      
-  // Call auth login (helper adds the /api prefix)
-  const user = await API.post<User>('/auth/login', { email, password });
-      
-      console.log('Login successful, user:', user);
-      set({ user, isLoading: false });
-      
+      console.log(`[${loginId}] 🌐 Making API call to /auth/login`);
+      console.log(`[${loginId}] 📨 Request payload:`, { email, password: '[REDACTED]' });
+
+      // Call auth login (helper adds the /api prefix)
+      const user = await API.post<User>('/auth/login', { email, password });
+
+      console.log(`[${loginId}] ✅ API Response received:`, {
+        id: user?.id,
+        name: user?.name,
+        email: user?.email,
+        role: user?.role,
+        hasAllFields: !!(user?.id && user?.name && user?.email && user?.role)
+      });
+
+      console.log(`[${loginId}] 💾 Updating Zustand store`);
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false
+      });
+
+      console.log(`[${loginId}] 🎉 LOGIN SUCCESSFUL - User authenticated`);
+      console.log(`[${loginId}] 📊 Store state after login:`, {
+        user: !!user,
+        isAuthenticated: true,
+        isLoading: false
+      });
+
       // Redirect or additional logic after successful login
-      console.groupEnd();
+      console.log(`[${loginId}] 🔚 FRONTEND LOGIN COMPLETED`);
       return user;
-    } catch (error) {
-      console.error('Login failed:', error);
-      set({ user: null, isLoading: false });
+    } catch (error: any) {
+      console.error(`[${loginId}] ❌ FRONTEND LOGIN FAILED:`, {
+        error: error?.message || String(error),
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        responseData: error?.response?.data,
+        stack: error?.stack
+      });
+
+      console.log(`[${loginId}] 🧹 Clearing store state due to login failure`);
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
+
+      console.log(`[${loginId}] 🚨 THROWING ERROR TO COMPONENT`);
       throw error;
     }
   },

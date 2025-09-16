@@ -159,10 +159,24 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 // Modify the getPool function to handle connection more robustly
 function getPool(): Pool {
-  Logger.info('getPool function called', { databaseUrlPresent: !!DATABASE_URL });
-  
+  const poolId = `pool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`[${poolId}] 🗄️ getPool() called`);
+  console.log(`[${poolId}] 🔧 Environment check:`, {
+    DATABASE_URL: DATABASE_URL ? `SET (length: ${DATABASE_URL.length})` : 'NOT SET ❌',
+    JWT_SECRET: process.env.JWT_SECRET ? `SET (length: ${process.env.JWT_SECRET.length})` : 'NOT SET ❌',
+    NODE_ENV: process.env.NODE_ENV || 'NOT SET'
+  });
+
+  Logger.info(`[${poolId}] getPool function called`, { databaseUrlPresent: !!DATABASE_URL });
+
   if (!DATABASE_URL) {
-    console.warn('DATABASE_URL not set. API will error until it is configured.');
+    console.error(`[${poolId}] 💥 CRITICAL: DATABASE_URL not set!`);
+    console.error(`[${poolId}] 📋 Environment variables:`, {
+      DATABASE_URL: process.env.DATABASE_URL,
+      JWT_SECRET: process.env.JWT_SECRET ? '[SET]' : '[NOT SET]',
+      NODE_ENV: process.env.NODE_ENV,
+      allEnvKeys: Object.keys(process.env)
+    });
     throw new Error('DATABASE_URL is required');
   }
   
@@ -199,24 +213,47 @@ function getPool(): Pool {
 
       // Test the connection with retry logic for serverless environment
       const testConnection = async (retries = 3) => {
+        const testId = `db_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`[${testId}] 🧪 Starting database connection test (${retries} retries)`);
+
         for (let i = 0; i < retries; i++) {
           try {
+            console.log(`[${testId}] 🔍 Attempt ${i + 1}/${retries}: Testing database connection`);
             if (!pool) {
-              Logger.error('Database pool is null during connection test');
+              console.error(`[${testId}] 💥 Database pool is null during connection test`);
+              Logger.error(`[${testId}] Database pool is null during connection test`);
               return;
             }
-            await pool.query('SELECT 1');
-            Logger.info('Successfully connected to PostgreSQL database');
+
+            console.log(`[${testId}] 📡 Executing 'SELECT 1' query`);
+            const result = await pool.query('SELECT 1 as test');
+            console.log(`[${testId}] ✅ Query successful:`, {
+              rowCount: result.rowCount,
+              command: result.command,
+              result: result.rows
+            });
+
+            Logger.info(`[${testId}] Successfully connected to PostgreSQL database`);
+            console.log(`[${testId}] 🎉 Database connection test PASSED`);
             return;
-          } catch (err) {
-            Logger.warn(`Database connection test attempt ${i + 1} failed`, {
+          } catch (err: any) {
+            console.error(`[${testId}] ❌ Attempt ${i + 1} failed:`, {
+              error: err?.message || String(err),
+              code: err?.code,
+              severity: err?.severity,
+              detail: err?.detail,
+              hint: err?.hint
+            });
+
+            Logger.warn(`[${testId}] Database connection test attempt ${i + 1} failed`, {
               error: err,
               attempt: i + 1,
               retries: retries
             });
 
             if (i === retries - 1) {
-              Logger.error('All database connection test attempts failed', {
+              console.error(`[${testId}] 💥 ALL DATABASE CONNECTION ATTEMPTS FAILED`);
+              Logger.error(`[${testId}] All database connection test attempts failed`, {
                 error: err,
                 connectionDetails: {
                   host: urlParts.hostname,
@@ -225,10 +262,13 @@ function getPool(): Pool {
                 }
               });
               // Don't throw in serverless - let the app handle connection errors gracefully
-              Logger.warn('Continuing without initial connection test - connections will be tested on demand');
+              Logger.warn(`[${testId}] Continuing without initial connection test - connections will be tested on demand`);
+              console.log(`[${testId}] ⚠️ Continuing without initial connection test`);
             } else {
+              const delay = 1000 * (i + 1);
+              console.log(`[${testId}] ⏳ Waiting ${delay}ms before retry ${i + 2}`);
               // Wait before retrying
-              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+              await new Promise(resolve => setTimeout(resolve, delay));
             }
           }
         }
@@ -871,93 +911,182 @@ export function createApp() {
     });
 
     app.post('/api/auth/login', async (req, res) => {
+      const requestId = req.headers['x-request-id'] || `login_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`[${requestId}] 🔐 LOGIN ATTEMPT STARTED`);
+      console.log(`[${requestId}] 📨 Request Body:`, {
+        email: req.body?.email || '[NOT PROVIDED]',
+        password: req.body?.password ? '[PROVIDED]' : '[NOT PROVIDED]',
+        hasBody: !!req.body,
+        bodyKeys: req.body ? Object.keys(req.body) : []
+      });
+
       try {
         const { email, password } = req.body;
-        
+
+        if (!email || !password) {
+          console.log(`[${requestId}] ❌ MISSING CREDENTIALS:`, { email: !!email, password: !!password });
+          return res.status(400).json({
+            error: 'Missing credentials',
+            details: 'Email and password are required'
+          });
+        }
+
+        console.log(`[${requestId}] 🔍 VALIDATING CREDENTIALS FORMAT`);
+        console.log(`[${requestId}] 📧 Email: ${email} (length: ${email?.length || 0})`);
+        console.log(`[${requestId}] 🔑 Password: [PROVIDED] (length: ${password?.length || 0})`);
+
         // Log incoming login attempt
-        Logger.info('Login attempt', { email });
-        
+        Logger.info(`[${requestId}] Login attempt`, { email, requestId });
+
+        // Check database connection
+        console.log(`[${requestId}] 🗄️ CHECKING DATABASE CONNECTION`);
+        const pool = getPool();
+        console.log(`[${requestId}] ✅ Database pool obtained`);
+
         // Detailed database query logging
         try {
-          const result = await trackQueryPerformance('login_query', () => 
-            getPool().query('SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1', [email])
+          console.log(`[${requestId}] 🔍 EXECUTING USER LOOKUP QUERY`);
+          const result = await trackQueryPerformance('login_query', () =>
+            pool.query('SELECT id, name, email, role, password_hash FROM users WHERE email = $1 LIMIT 1', [email])
           );
-          
-          const user = assertResult<any>(result.rows[0]); // Use assertResult here
-          
-          // Log user lookup result
-          Logger.info('User lookup result', { 
-            userFound: !!user, 
-            email 
+
+          console.log(`[${requestId}] 📊 Query Result:`, {
+            rowCount: result.rowCount,
+            command: result.command,
+            fields: result.fields?.map(f => f.name) || []
           });
-          
-          if (!user) {
-            // Log failed login attempt
+
+          if (result.rowCount === 0) {
+            console.log(`[${requestId}] ❌ USER NOT FOUND: ${email}`);
             logEnhancedError(new Error('User not found'), {
               route: '/api/auth/login',
               method: 'POST',
               input: { email }
             });
-            
-            return res.status(401).json({ error: 'Invalid credentials' });
+
+            return res.status(401).json({
+              error: 'Invalid credentials',
+              details: 'User not found',
+              requestId
+            });
           }
-          
-          const ok = await bcrypt.compare(password, user.password_hash);
-          
-          // Log password comparison result
-          Logger.info('Password comparison result', { 
-            passwordMatch: ok, 
-            email
+
+          const user = assertResult<any>(result.rows[0]);
+          console.log(`[${requestId}] ✅ USER FOUND:`, {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            hasPasswordHash: !!user.password_hash
           });
-          
+
+          // Log user lookup result
+          Logger.info(`[${requestId}] User lookup result`, {
+            userFound: true,
+            email,
+            userId: user.id,
+            requestId
+          });
+
+          console.log(`[${requestId}] 🔐 COMPARING PASSWORDS`);
+          const ok = await bcrypt.compare(password, user.password_hash);
+          console.log(`[${requestId}] 🔍 Password comparison result:`, {
+            match: ok,
+            hashLength: user.password_hash?.length || 0,
+            inputLength: password?.length || 0
+          });
+
           if (!ok) {
-            // Log failed password attempt
+            console.log(`[${requestId}] ❌ INVALID PASSWORD for user: ${email}`);
             logEnhancedError(new Error('Invalid password'), {
               route: '/api/auth/login',
               method: 'POST',
               input: { email }
             });
-            
-            return res.status(401).json({ error: 'Invalid credentials' });
+
+            return res.status(401).json({
+              error: 'Invalid credentials',
+              details: 'Incorrect password',
+              requestId
+            });
           }
-          
-          // Successful login
-          setAuthCookie(res, signToken({ id: user.id, email: user.email, role: user.role }));
-          
+
+          console.log(`[${requestId}] ✅ PASSWORD VERIFIED - GENERATING JWT TOKEN`);
+          const token = signToken({ id: user.id, email: user.email, role: user.role });
+          console.log(`[${requestId}] 🎫 JWT Token generated:`, {
+            length: token.length,
+            startsWith: token.substring(0, 20) + '...'
+          });
+
+          console.log(`[${requestId}] 🍪 SETTING AUTH COOKIE`);
+          setAuthCookie(res, token);
+
           // Log successful login
           logUserActivity(
-            user.id, 
-            'login', 
-            'user', 
-            user.id, 
-            { email }
+            user.id,
+            'login',
+            'user',
+            user.id,
+            { email, requestId }
           );
-          
+
           const { password_hash, ...safe } = user;
+          console.log(`[${requestId}] 🎉 LOGIN SUCCESSFUL - RETURNING USER DATA`);
+          console.log(`[${requestId}] 📤 Response:`, {
+            id: safe.id,
+            name: safe.name,
+            email: safe.email,
+            role: safe.role
+          });
+
           res.json(safe);
-        } catch (queryError: unknown) { // Explicitly type queryError as unknown
+        } catch (queryError: unknown) {
+          console.error(`[${requestId}] 💥 DATABASE QUERY ERROR:`, {
+            error: String(queryError),
+            stack: queryError instanceof Error ? queryError.stack : 'No stack trace'
+          });
+
           // Log database query error
-          Logger.error('Login database query error', { error: String(queryError) });
-          
+          Logger.error(`[${requestId}] Login database query error`, {
+            error: String(queryError),
+            requestId
+          });
+
           logEnhancedError(new Error(String(queryError)), {
             route: '/api/auth/login',
             method: 'POST',
             input: { email }
           });
-          
-          res.status(500).json({ error: 'Database error during login' });
+
+          res.status(500).json({
+            error: 'Database error during login',
+            details: String(queryError),
+            requestId
+          });
         }
-      } catch (e: unknown) { // Explicitly type e as unknown
+      } catch (e: unknown) {
+        console.error(`[${requestId}] 💥 UNEXPECTED LOGIN ERROR:`, {
+          error: String(e),
+          stack: e instanceof Error ? e.stack : 'No stack trace'
+        });
+
         // Catch-all error logging
-        Logger.error('Unexpected login error', { error: String(e) });
-        
+        Logger.error(`[${requestId}] Unexpected login error`, {
+          error: String(e),
+          requestId
+        });
+
         logEnhancedError(new Error(String(e)), {
           route: '/api/auth/login',
           method: 'POST',
-          input: { email: req.body.email }
+          input: { email: req.body?.email }
         });
-        
-        res.status(500).json({ error: 'Unexpected error during login' });
+
+        res.status(500).json({
+          error: 'Unexpected error during login',
+          details: String(e),
+          requestId
+        });
       }
     });
 
