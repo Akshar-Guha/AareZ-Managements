@@ -80,10 +80,17 @@ export default async function handler(req: Request, res: Response) {
   console.log(`api/index.ts: Handler invoked for: ${req.method} ${req.url}`);
   console.log(`api/index.ts: Request Headers (partial): Host=${req.headers.host}, User-Agent=${req.headers['user-agent']}`);
 
+  // DEBUG: Log all environment variables at handler level
+  console.log('api/index.ts: DEBUG - Environment variables check:');
+  console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET (length: ' + process.env.DATABASE_URL.length + ')' : 'NOT SET');
+  console.log('  JWT_SECRET:', process.env.JWT_SECRET ? 'SET (length: ' + process.env.JWT_SECRET.length + ')' : 'NOT SET');
+  console.log('  NODE_ENV:', process.env.NODE_ENV);
+  console.log('  CORS_ORIGIN:', process.env.CORS_ORIGIN);
+
   // Improved CORS handling
   const origin = req.headers.origin || '';
   const allowedOrigins = ['https://aarez-mgnmt.vercel.app', 'http://localhost:5173', 'http://localhost:5174'];
-  
+
   // Set CORS headers based on origin
   if (allowedOrigins.some(allowed => origin.includes(allowed))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -94,7 +101,7 @@ export default async function handler(req: Request, res: Response) {
     // Default to production origin
     res.setHeader('Access-Control-Allow-Origin', 'https://aarez-mgnmt.vercel.app');
   }
-  
+
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With,Cache-Control');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
