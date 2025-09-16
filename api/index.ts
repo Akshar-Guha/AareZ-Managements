@@ -132,11 +132,38 @@ export default async function handler(req: Request, res: Response) {
 
   // Add simple health check endpoint (no database required)
   if (req.url === '/api/ping') {
-    console.log('api/index.ts: Ping endpoint called');
+    console.log(`[${requestId}] 🏓 PING endpoint called`);
     return res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
-      message: 'Vercel function is working'
+      message: 'Vercel function is working',
+      requestId,
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasJwtSecret: !!process.env.JWT_SECRET
+      }
+    });
+  }
+
+  // Add environment test endpoint
+  if (req.url === '/api/env-test') {
+    console.log(`[${requestId}] 🧪 ENVIRONMENT TEST endpoint called`);
+    return res.json({
+      timestamp: new Date().toISOString(),
+      requestId,
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+        JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+        CORS_ORIGIN: process.env.CORS_ORIGIN,
+        MIGRATE_ON_START: process.env.MIGRATE_ON_START
+      },
+      process: {
+        version: process.version,
+        platform: process.platform,
+        memory: process.memoryUsage()
+      }
     });
   }
 
