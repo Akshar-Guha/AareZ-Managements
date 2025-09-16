@@ -1,4 +1,4 @@
-import { createApp } from './app.js';
+import { createApp } from './app';
 import serverless from 'serverless-http';
 import type { Request, Response } from 'express';
 // import dotenv from 'dotenv'; // Removed as Vercel injects env vars directly
@@ -80,10 +80,24 @@ export default async function handler(req: Request, res: Response) {
   console.log(`api/index.ts: Handler invoked for: ${req.method} ${req.url}`);
   console.log(`api/index.ts: Request Headers (partial): Host=${req.headers.host}, User-Agent=${req.headers['user-agent']}`);
 
-  // Explicit CORS headers for all responses
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
+  // Improved CORS handling
+  const origin = req.headers.origin || '';
+  const allowedOrigins = ['https://aarez-mgnmt.vercel.app', 'http://localhost:5173', 'http://localhost:5174'];
+  
+  // Set CORS headers based on origin
+  if (allowedOrigins.some(allowed => origin.includes(allowed))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // Allow requests with no origin (e.g., server-to-server, Postman)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Default to production origin
+    res.setHeader('Access-Control-Allow-Origin', 'https://aarez-mgnmt.vercel.app');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With,Cache-Control');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
 
   // Handle OPTIONS preflight requests

@@ -15,17 +15,17 @@ const getApiBaseUrl = () => {
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
       // Explicitly set base URL for Vercel production
-      baseUrl = 'https://aarez-mgnmt.vercel.app/api';
+      baseUrl = 'https://aarez-mgnmt.vercel.app';
     } else if (isLocalhost) {
       // Local development fallback with explicit port for API
-      baseUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:5174/api';
+      baseUrl = 'http://localhost:5174';
     } else {
-      // Fallback to window origin with /api prefix
-      baseUrl = `${windowOrigin}/api`;
+      // Fallback to window origin
+      baseUrl = windowOrigin;
     }
   } else {
-    // Server-side rendering or other contexts fallback
-    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}/api` : 'https://aarez-mgnmt.vercel.app/api';
+    // Server-side rendering or other contexts fallback (do not include /api here)
+    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}` : 'https://aarez-mgnmt.vercel.app';
   }
   
   console.log('Determined base URL:', baseUrl);
@@ -38,10 +38,12 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API GET Request: ${path}`);
-      console.log(`Fetching GET ${baseUrl}${path}`);
       
-      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      // Ensure path starts with /api/ if it doesn't already
+      const fullPath = path.startsWith('/api/') ? path : `/api/${path.replace(/^\//, '')}`;
       
+      console.log(`Fetching GET ${baseUrl}${fullPath}`);
+
       const res = await fetch(`${baseUrl}${fullPath}`, {
         credentials: 'include', // Explicitly include credentials for cross-site requests
         headers: {
@@ -74,9 +76,11 @@ export const API = {
     try {
       const baseUrl = getApiBaseUrl();
       console.group(`API POST Request: ${path}`);
-      console.log(`Posting to ${baseUrl}${path}`, body);
       
-      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      // Ensure path starts with /api/ if it doesn't already
+      const fullPath = path.startsWith('/api/') ? path : `/api/${path.replace(/^\//, '')}`;
+      
+      console.log(`Posting to ${baseUrl}${fullPath}`, body);
       
       // Log full request details
       console.log('Full Request Details:', {
@@ -86,17 +90,18 @@ export const API = {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
 
       const res = await fetch(`${baseUrl}${fullPath}`, {
-        method: 'POST', 
-        credentials: 'include', 
-        headers: { 
+        method: 'POST',
+        credentials: 'include',
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }, 
-        body: body ? JSON.stringify(body) : undefined 
+        },
+        body: body ? JSON.stringify(body) : undefined
       });
       
       console.log(`POST ${fullPath} response status:`, res.status);
@@ -130,29 +135,33 @@ export const API = {
   async put<T>(path: string, body?: any): Promise<T> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Putting to ${baseUrl}/api${path}`, body);
-      const fullPath = path.startsWith('/') ? path : `/${path}`;
-      const res = await fetch(`${baseUrl}/api${fullPath}`, {
-        method: 'PUT', 
-        credentials: 'include', 
-        headers: { 
+      
+      // Ensure path starts with /api/ if it doesn't already
+      const fullPath = path.startsWith('/api/') ? path : `/api/${path.replace(/^\//, '')}`;
+      
+      console.log(`Putting to ${baseUrl}${fullPath}`, body);
+      
+      const res = await fetch(`${baseUrl}${fullPath}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }, 
-        body: JSON.stringify(body) 
+        },
+        body: JSON.stringify(body)
       });
       
-      console.log(`PUT /api${fullPath} response status:`, res.status);
+      console.log(`PUT ${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`PUT /api${fullPath} error:`, errorText);
+        console.error(`PUT ${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`PUT /api${path} network error:`, error);
+      console.error(`PUT ${path} network error:`, error);
       throw error;
     }
   },
@@ -160,27 +169,31 @@ export const API = {
   async del<T>(path: string): Promise<T | undefined> {
     try {
       const baseUrl = getApiBaseUrl();
-      console.log(`Deleting ${baseUrl}/api${path}`);
-      const fullPath = path.startsWith('/') ? path : `/${path}`;
-      const res = await fetch(`${baseUrl}/api${fullPath}`, {
-        method: 'DELETE', 
+      
+      // Ensure path starts with /api/ if it doesn't already
+      const fullPath = path.startsWith('/api/') ? path : `/api/${path.replace(/^\//, '')}`;
+      
+      console.log(`Deleting ${baseUrl}${fullPath}`);
+      
+      const res = await fetch(`${baseUrl}${fullPath}`, {
+        method: 'DELETE',
         credentials: 'include',
         headers: {
           'Accept': 'application/json'
         }
       });
       
-      console.log(`DELETE /api${fullPath} response status:`, res.status);
+      console.log(`DELETE ${fullPath} response status:`, res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`DELETE /api${fullPath} error:`, errorText);
+        console.error(`DELETE ${fullPath} error:`, errorText);
         throw new Error(`API request failed with status ${res.status}: ${errorText}`);
       }
       
       return res.json();
     } catch (error) {
-      console.error(`DELETE /api${path} network error:`, error);
+      console.error(`DELETE ${path} network error:`, error);
       throw error;
     }
   },

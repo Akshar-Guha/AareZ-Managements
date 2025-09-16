@@ -14,7 +14,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | void>;
   logout: () => Promise<void>;
 }
 
@@ -84,13 +84,22 @@ const useAuthStore: StateCreator<AuthState> = (set, get) => ({
   },
 
   login: async (email: string, password: string) => {
-    set({ isLoading: true });
     try {
-      const user = await API.post<User>('/auth/login', { email, password });
-      set({ user, isAuthenticated: true, isLoading: false });
+      console.group('Login Process');
+      console.log('Attempting login for:', email);
+      
+  // Call auth login (helper adds the /api prefix)
+  const user = await API.post<User>('/auth/login', { email, password });
+      
+      console.log('Login successful, user:', user);
+      set({ user, isLoading: false });
+      
+      // Redirect or additional logic after successful login
+      console.groupEnd();
+      return user;
     } catch (error) {
       console.error('Login failed:', error);
-      set({ isLoading: false });
+      set({ user: null, isLoading: false });
       throw error;
     }
   },

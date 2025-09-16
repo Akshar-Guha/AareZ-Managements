@@ -3,7 +3,7 @@
   "// --- For backend only --- ": "",
   "functions": {
     "api/index.ts": {
-      "runtime": "node18.x"
+      "runtime": "nodejs18.x"
     }
   },
   "routes": [

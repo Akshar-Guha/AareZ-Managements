@@ -11,7 +11,9 @@ export default defineConfig(() => {
         '/api': {
           target: 'http://localhost:5174',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          // Preserve the /api prefix so backend routes defined with /api/... match correctly
+          // (previously the proxy stripped /api which caused unmatched routes)
+          rewrite: (path) => path
         }
       }
     },

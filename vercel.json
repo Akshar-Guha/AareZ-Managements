@@ -1,16 +1,17 @@
 {
   "version": 2,
   "name": "healthcare-manager-monorepo",
-  "env": {
-    "NODE_ENV": "production",
-    "CORS_ORIGIN": "https://aarez-mgnmt.vercel.app",
-    "MIGRATE_ON_START": "true",
-    "JWT_SECRET": "${JWT_SECRET}",
-    "DATABASE_URL": "${DATABASE_URL}"
-  },
-  "build": {
-    "env": {
-      "VITE_PUBLIC_CORS_ORIGIN": "https://aarez-mgnmt.vercel.app"
+  "functions": {
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 10,
+      "runtime": "nodejs20.x"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    }
+  ]
 }
