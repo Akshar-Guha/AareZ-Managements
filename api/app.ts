@@ -175,14 +175,17 @@ function getPool(): Pool {
       
       pool = new Pool({
         connectionString: DATABASE_URL,
-        // Let the environment/pg parse SSL from the connection string. Cast to any to avoid PoolConfig type issues.
-        max: 20, // Max number of clients in the pool
-        idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
-        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+        // Optimized for Vercel serverless environment
+        max: 5, // Reduced max connections for serverless
+        min: 0, // No minimum connections
+        idleTimeoutMillis: 30000, // Shorter idle timeout
+        connectionTimeoutMillis: 20000, // Longer connection timeout for serverless
+        acquireTimeoutMillis: 60000, // Longer acquire timeout
+        allowExitOnIdle: true, // Allow pool to exit when idle
       } as any);
 
       pool.on('error', (err: Error) => {
-        Logger.error('Unexpected error on idle PostgreSQL client', { 
+        Logger.error('Unexpected error on idle PostgreSQL client', {
           error: err,
           connectionDetails: {
             host: urlParts.hostname,
@@ -190,24 +193,49 @@ function getPool(): Pool {
             database: urlParts.pathname.replace('/', '')
           }
         });
+        // Don't exit the process in serverless environment
+        // Just log the error and let the pool handle it
       });
 
-      // Test the connection by acquiring a client and immediately releasing it
-      pool.query('SELECT 1')
-        .then(() => {
-          Logger.info('Successfully connected to PostgreSQL database');
-        })
-        .catch((err) => {
-          Logger.error('Error during initial database connection test', { 
-            error: err,
-            connectionDetails: {
-              host: urlParts.hostname,
-              port: urlParts.port,
-              database: urlParts.pathname.replace('/', '')
+      // Test the connection with retry logic for serverless environment
+      const testConnection = async (retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            if (!pool) {
+              Logger.error('Database pool is null during connection test');
+              return;
             }
-          });
-          throw err; // Re-throw to prevent app from starting with a bad connection
-        });
+            await pool.query('SELECT 1');
+            Logger.info('Successfully connected to PostgreSQL database');
+            return;
+          } catch (err) {
+            Logger.warn(`Database connection test attempt ${i + 1} failed`, {
+              error: err,
+              attempt: i + 1,
+              retries: retries
+            });
+
+            if (i === retries - 1) {
+              Logger.error('All database connection test attempts failed', {
+                error: err,
+                connectionDetails: {
+                  host: urlParts.hostname,
+                  port: urlParts.port,
+                  database: urlParts.pathname.replace('/', '')
+                }
+              });
+              // Don't throw in serverless - let the app handle connection errors gracefully
+              Logger.warn('Continuing without initial connection test - connections will be tested on demand');
+            } else {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+          }
+        }
+      };
+
+      // Test connection asynchronously without blocking app startup
+      testConnection();
     } catch (setupError) {
       Logger.error('Failed to set up database pool', { 
         error: setupError,
