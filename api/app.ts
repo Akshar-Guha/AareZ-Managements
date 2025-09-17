@@ -177,7 +177,9 @@ function getPool(): Pool {
       NODE_ENV: process.env.NODE_ENV,
       allEnvKeys: Object.keys(process.env)
     });
-    throw new Error('DATABASE_URL is required');
+    console.error(`[${poolId}] Please set DATABASE_URL in Vercel environment variables.`);
+    console.error(`[${poolId}] Example: postgresql://user:password@host:port/database?sslmode=require`);
+    throw new Error('DATABASE_URL is required. Please configure it in Vercel dashboard.');
   }
   
   if (!pool) {
@@ -264,6 +266,7 @@ function getPool(): Pool {
               // Don't throw in serverless - let the app handle connection errors gracefully
               Logger.warn(`[${testId}] Continuing without initial connection test - connections will be tested on demand`);
               console.log(`[${testId}] ⚠️ Continuing without initial connection test`);
+              console.log(`[${testId}] Please verify DATABASE_URL is correct in Vercel environment variables`);
             } else {
               const delay = 1000 * (i + 1);
               console.log(`[${testId}] ⏳ Waiting ${delay}ms before retry ${i + 2}`);

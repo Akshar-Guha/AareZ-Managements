@@ -33,11 +33,15 @@ async function getApp() {
 
     if (!process.env.DATABASE_URL) {
       console.error('CRITICAL ERROR (api/index.ts): DATABASE_URL is not set.');
-      throw new Error('DATABASE_URL environment variable is required.');
+      console.error('Please set DATABASE_URL in Vercel environment variables.');
+      console.error('Example: postgresql://user:password@host:port/database?sslmode=require');
+      throw new Error('DATABASE_URL environment variable is required. Please configure it in Vercel dashboard.');
     }
     if (!process.env.JWT_SECRET) {
       console.error('CRITICAL ERROR (api/index.ts): JWT_SECRET is not set.');
-      throw new Error('JWT_SECRET environment variable is required.');
+      console.error('Please set JWT_SECRET in Vercel environment variables.');
+      console.error('Generate a secure random string for JWT_SECRET.');
+      throw new Error('JWT_SECRET environment variable is required. Please configure it in Vercel dashboard.');
     }
 
     // Enhanced environment variable logging
@@ -71,7 +75,9 @@ async function getApp() {
           errorMessage: err instanceof Error ? err.message : String(err),
           errorStack: err instanceof Error ? err.stack : 'No stack trace'
         });
-        throw err; // Re-throw to prevent the function from becoming unresponsive
+        console.error('api/index.ts: Continuing without schema migration - app may not work properly');
+        // Don't throw here - let the app start even if migration fails
+        // This prevents the entire serverless function from crashing
       }
     }
 
