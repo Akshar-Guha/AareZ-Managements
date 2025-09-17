@@ -19,26 +19,18 @@ function createSimpleApp() {
   // Basic middleware
   app.use(express.json());
 
-  // CORS headers
+  // CORS headers - Allow all for debugging
   app.use((req, res, next) => {
-    const allowedOrigins = [
-      'https://aarez-mgnmt.vercel.app',
-      'http://localhost:5173',
-      'http://localhost:5174'
-    ];
+    console.log('CORS Request from:', req.headers.origin, 'Method:', req.method);
 
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin || '')) {
-      res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With,Cache-Control');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
 
     if (req.method === 'OPTIONS') {
+      console.log('Handling OPTIONS preflight request');
       return res.status(204).end();
     }
     next();
@@ -99,6 +91,13 @@ function createSimpleApp() {
   // Auth endpoints
   app.post('/api/auth/login', express.json(), async (req, res) => {
     try {
+      console.log('Login request received:', {
+        method: req.method,
+        url: req.url,
+        origin: req.headers.origin,
+        body: req.body
+      });
+
       const { email, password } = req.body;
       console.log('Login attempt:', { email, hasPassword: !!password });
 
@@ -119,8 +118,10 @@ function createSimpleApp() {
           maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
+        console.log('Login successful, sending user data');
         res.json(user);
       } else {
+        console.log('Invalid credentials for:', email);
         res.status(401).json({ error: 'Invalid credentials' });
       }
     } catch (error) {
@@ -130,9 +131,20 @@ function createSimpleApp() {
   });
 
   app.get('/api/auth/me', (req, res) => {
+    console.log('/auth/me request received:', {
+      method: req.method,
+      url: req.url,
+      origin: req.headers.origin,
+      cookies: req.cookies,
+      headers: req.headers
+    });
+
     // Check for auth token
     const token = req.cookies.token;
+    console.log('Auth token present:', !!token);
+
     if (!token) {
+      console.log('No auth token found, returning 401');
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -144,6 +156,7 @@ function createSimpleApp() {
       role: 'admin'
     };
 
+    console.log('Returning user data for /auth/me');
     res.json(user);
   });
 
@@ -191,6 +204,12 @@ function createSimpleApp() {
       { id: 2, doctor_code: 'DOC002', amount: 7500, investment_date: '2024-02-20', expected_returns: 900 }
     ];
     res.json(investments);
+  });
+
+  // Logging endpoint to handle frontend logs
+  app.post('/api/logs', express.json(), (req, res) => {
+    console.log('Frontend log received:', req.body);
+    res.status(204).end(); // No content response
   });
 
   // Catch-all for unmatched routes
