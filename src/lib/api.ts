@@ -14,18 +14,18 @@ const getApiBaseUrl = () => {
   let baseUrl: string;
   if (hasWindow) {
     if (windowHostname === 'aarez-mgnmt.vercel.app') {
-      // Explicitly set base URL for Vercel production
-      baseUrl = 'https://aarez-mgnmt.vercel.app';
+      // Frontend is deployed here, backend is at separate URL
+      baseUrl = 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
     } else if (isLocalhost) {
-      // Local development fallback with explicit port for API
+      // Local development - backend runs on different port
       baseUrl = 'http://localhost:5174';
     } else {
       // Fallback to window origin
       baseUrl = windowOrigin;
     }
   } else {
-    // Server-side rendering or other contexts fallback (do not include /api here)
-    baseUrl = import.meta.env.VITE_PUBLIC_CORS_ORIGIN ? `${import.meta.env.VITE_PUBLIC_CORS_ORIGIN}` : 'https://aarez-mgnmt.vercel.app';
+    // Server-side rendering or other contexts fallback
+    baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
   }
   
   console.log('Determined base URL:', baseUrl);

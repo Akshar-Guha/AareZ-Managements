@@ -21,9 +21,23 @@ function createSimpleApp() {
 
   // CORS headers
   app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const allowedOrigins = [
+      'https://aarez-mgnmt.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:5174'
+    ];
+
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin || '')) {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
@@ -80,6 +94,103 @@ function createSimpleApp() {
         CORS_ORIGIN: process.env.CORS_ORIGIN
       }
     });
+  });
+
+  // Auth endpoints
+  app.post('/api/auth/login', express.json(), async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      console.log('Login attempt:', { email, hasPassword: !!password });
+
+      // Mock authentication for now - replace with real database lookup
+      if (email === 'admin@aarezhealth.com' && password === 'admin123') {
+        const user = {
+          id: 1,
+          name: 'Admin User',
+          email: 'admin@aarezhealth.com',
+          role: 'admin'
+        };
+
+        // Set cookie for session
+        res.cookie('token', 'mock-jwt-token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        res.json(user);
+      } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  app.get('/api/auth/me', (req, res) => {
+    // Check for auth token
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Mock user for now - replace with real token verification
+    const user = {
+      id: 1,
+      name: 'Admin User',
+      email: 'admin@aarezhealth.com',
+      role: 'admin'
+    };
+
+    res.json(user);
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ success: true });
+  });
+
+  // Dashboard endpoints
+  app.get('/api/dashboard/stats', (req, res) => {
+    // Mock dashboard stats
+    res.json({
+      totalInvestments: 150,
+      activeDoctors: 25,
+      products: 45,
+      roi: 12.5
+    });
+  });
+
+  // Doctors endpoints
+  app.get('/api/doctors', (req, res) => {
+    // Mock doctors data
+    const doctors = [
+      { id: 1, code: 'DOC001', name: 'Dr. Smith', specialty: 'Cardiology' },
+      { id: 2, code: 'DOC002', name: 'Dr. Johnson', specialty: 'Neurology' }
+    ];
+    res.json(doctors);
+  });
+
+  // Products endpoints
+  app.get('/api/products', (req, res) => {
+    // Mock products data
+    const products = [
+      { id: 1, name: 'Product A', category: 'Medicine', status: 'Active', price: 25.50 },
+      { id: 2, name: 'Product B', category: 'Equipment', status: 'Active', price: 150.00 }
+    ];
+    res.json(products);
+  });
+
+  // Investments endpoints
+  app.get('/api/investments', (req, res) => {
+    // Mock investments data
+    const investments = [
+      { id: 1, doctor_code: 'DOC001', amount: 5000, investment_date: '2024-01-15', expected_returns: 600 },
+      { id: 2, doctor_code: 'DOC002', amount: 7500, investment_date: '2024-02-20', expected_returns: 900 }
+    ];
+    res.json(investments);
   });
 
   // Catch-all for unmatched routes
