@@ -3,7 +3,14 @@ import serverless from 'serverless-http';
 import type { Request, Response } from 'express';
 // import dotenv from 'dotenv'; // Removed as Vercel injects env vars directly
 
-console.log('api/index.ts: Module loaded.');
+// IMMEDIATE LOGGING - This should appear in Vercel logs
+console.log('🚀 api/index.ts: MODULE LOADED - Function starting up');
+console.log('📊 Environment check at module load:', {
+  DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+  NODE_ENV: process.env.NODE_ENV,
+  timestamp: new Date().toISOString()
+});
 
 // Load environment variables - no longer needed with Vercel direct injection
 // dotenv.config({ path: ['.env.local', '.env'] });

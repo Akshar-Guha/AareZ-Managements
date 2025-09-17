@@ -758,7 +758,7 @@ export function createApp() {
       res.status(500).json({ error: 'Unexpected server error' });
     });
 
-    // Catch-all middleware to log unmatched routes
+    // Catch-all middleware to log unmatched routes and send 404
     app.use((req: Request, res: Response, next: NextFunction) => {
       Logger.warn('Unmatched Route', {
         method: req.method,
@@ -766,7 +766,23 @@ export function createApp() {
         url: req.url,
         originalUrl: req.originalUrl
       });
-      next();
+      res.status(404).json({
+        error: 'Not Found',
+        message: `Route ${req.method} ${req.path} not found`,
+        availableEndpoints: [
+          '/api/health',
+          '/api/ping',
+          '/api/env-test',
+          '/api/diagnostic',
+          '/api/auth/login',
+          '/api/auth/me',
+          '/api/doctors',
+          '/api/products',
+          '/api/investments',
+          '/api/bills',
+          '/api/pharmacies'
+        ]
+      });
     });
 
     console.log('Adding diagnostic routes...');
