@@ -10,18 +10,15 @@ const getApiBaseUrl = () => {
   const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(windowHostname) || 
                      /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(windowHostname);
 
-  // Explicitly handle different deployment scenarios
+  // Handle different deployment scenarios
   let baseUrl: string;
   if (hasWindow) {
-    if (windowHostname === 'aarez-mgnmt.vercel.app') {
-      // Frontend is deployed here, backend is at separate URL
-      baseUrl = 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
-    } else if (isLocalhost) {
+    if (isLocalhost) {
       // Local development - backend runs on different port
       baseUrl = 'http://localhost:5174';
     } else {
-      // Fallback to window origin
-      baseUrl = windowOrigin;
+      // Production - frontend and backend are separate deployments
+      baseUrl = 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
     }
   } else {
     // Server-side rendering or other contexts fallback
