@@ -852,6 +852,29 @@ export function createApp() {
       res.status(204).end();
     });
 
+    // Temporary root route for testing
+    app.get('/', (req, res) => {
+      Logger.info('Root route hit - Express app is running!');
+      res.status(200).json({
+        message: 'Welcome to the Aarez Healthcare Backend API!',
+        status: 'Express app is running',
+        timestamp: new Date().toISOString(),
+        availableEndpoints: [
+          '/api/health',
+          '/api/ping',
+          '/api/env-test',
+          '/api/diagnostic',
+          '/api/auth/login',
+          '/api/auth/me',
+          '/api/doctors',
+          '/api/products',
+          '/api/investments',
+          '/api/bills',
+          '/api/pharmacies'
+        ]
+      });
+    });
+
     // Environment info route
     app.get('/api/env', (req, res) => {
       res.json({
