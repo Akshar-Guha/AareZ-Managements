@@ -17,12 +17,12 @@ const getApiBaseUrl = () => {
       // Local development - backend runs on different port
       baseUrl = 'http://localhost:5174';
     } else {
-      // Production - frontend and backend are separate deployments
-      baseUrl = 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
+      // Production - use main deployment for both frontend and backend
+      baseUrl = 'https://aarez-mgnmt.vercel.app';
     }
   } else {
     // Server-side rendering or other contexts fallback
-    baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://aarez-mgnmt-git-backend-only-umbrag.vercel.app';
+    baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://aarez-mgnmt.vercel.app';
   }
   
   console.log('Determined base URL:', baseUrl);

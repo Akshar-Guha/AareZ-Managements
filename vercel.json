@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "healthcare-manager-frontend",
+  "name": "healthcare-manager",
   "builds": [
     {
       "src": "package.json",
@@ -8,9 +8,21 @@
       "config": {
         "distDir": "dist"
       }
+    },
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs20.x",
+        "maxDuration": 30
+      }
     }
   ],
   "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    },
     {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
