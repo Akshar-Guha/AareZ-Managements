@@ -9,6 +9,9 @@ console.log('📊 Environment check at module load:', {
   NODE_ENV: process.env.NODE_ENV,
   timestamp: new Date().toISOString()
 });
+console.log('🔧 All environment variables:', Object.keys(process.env));
+console.log('🌐 Current working directory:', process.cwd());
+console.log('📁 Files in current directory:', require('fs').readdirSync('.'));
 
 // Create a simple Express app inline to avoid import issues
 function createSimpleApp() {
@@ -59,10 +62,18 @@ function createSimpleApp() {
 
   // Health check
   app.get('/api/health', (req, res) => {
+    console.log('HEALTH CHECK REQUEST:', {
+      method: req.method,
+      url: req.url,
+      origin: req.headers.origin,
+      timestamp: new Date().toISOString()
+    });
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV
+      environment: process.env.NODE_ENV,
+      uptime: process.uptime(),
+      memory: process.memoryUsage()
     });
   });
 
@@ -210,6 +221,27 @@ function createSimpleApp() {
   app.post('/api/logs', express.json(), (req, res) => {
     console.log('Frontend log received:', req.body);
     res.status(204).end(); // No content response
+  });
+
+  // Test endpoint for debugging
+  app.get('/api/test', (req, res) => {
+    console.log('TEST ENDPOINT HIT:', {
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      timestamp: new Date().toISOString()
+    });
+    res.json({
+      message: 'Backend is working!',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      requestInfo: {
+        method: req.method,
+        url: req.url,
+        origin: req.headers.origin,
+        userAgent: req.headers['user-agent']
+      }
+    });
   });
 
   // Catch-all for unmatched routes
